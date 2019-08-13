@@ -1,0 +1,36 @@
+
+
+#  You'll need some cross-compilers:
+dnf install arm-none-eabi-binutils-cs
+dnf install arm-none-eabi-gdb  # don't worry if this isn't available
+dnf install arm-none-eabi-gcc-cs
+dnf install arm-none-eabi-newlib
+dnf install arm-none-eabi-gcc-cs-c++
+
+# From this directory, you'll need to clone mbed-os:
+git clone https://github.com/ARMmbed/mbed-os.git
+
+# Install the mbed CLI tools:
+pip3 install --user -r mbed-os/requirements.txt
+pip3 install --user mbed-cli
+
+# Initialize the project with a Makefile:
+mbed new .
+mbed export -m NUCLEO_F767ZI -i make_gcc_arm
+
+
+
+# See also:
+###  https://os.mbed.com/docs/mbed-os/v5.12/tools/exporting.html
+
+
+
+
+##################################################
+#### To install the binary onto the ST32 board:
+##################################################
+
+cp BUILD/*.bin /mnt/mbed
+sync
+
+
