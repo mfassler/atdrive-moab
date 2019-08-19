@@ -15,20 +15,20 @@
 #include "EthernetInterface.h"
 
 #include "ROBOT_CONFIG.hpp"
+#include "EVENT_FLAGS.hpp"
 
-#define _SBUS_EVENT_FLAG 0x10
-#define _GPS_EVENT_FLAG 0x20
-#define _SHAFT_FALL_EVENT_FLAG 0x40
-#define _PGM_FALL_EVENT_FLAG 0x80
-EventFlags event_flags;
 
 #include "SbusParser.hpp"
 //#include "UbloxParser.hpp"
 #include "MotorControl.hpp"
 
+#include "ShaftEncoder.hpp"
+
+
 #include "drivers/ST_LIS3MDL.hpp"
 #include "drivers/BMP280.hpp"
 
+EventFlags event_flags;
 
 uint16_t debug_port = 31337;
 uint16_t sbus_port = 31338;
@@ -38,7 +38,7 @@ uint16_t aux_serial_port_1 = 31341;
 
 //uint16_t gps_port = 27110; // ublox
 uint16_t compass_port = 27111;
-uint16_t odometry_port = 27112;
+//uint16_t odometry_port = 27112;  // now "SHAFT_PORT" in ShaftEncoder
 uint16_t gps_port_nmea = 27113; // NMEA
 
 
@@ -68,6 +68,7 @@ DigitalOut myledB(LED2, 0);
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
+ShaftEncoder shaft(PE_9, &net);
 
 
 /*****************************************
@@ -95,7 +96,6 @@ RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
 //RawSerial aux_serial1(PE_8, PE_7, 38400);
 RawSerial aux_serial1(PA_0, NC, 38400);
 
-InterruptIn shaft_encoder(PD_0, PullUp);
 InterruptIn pgm_switch(PD_1, PullUp);
 
 void u_printf(const char *fmt, ...) {
@@ -209,17 +209,7 @@ void set_mode_auto() {
 
 
 
-uint64_t _last_shaft_fall = 0;
-uint64_t _last_shaft_rise = 0;
 
-void Gpin_Interrupt_Shaft() {
-
-	uint64_t ts = rtos::Kernel::get_ms_count();
-	//if (ts - _last_shaft_fall > 25) {
-		_last_shaft_fall = ts;
-		event_flags.set(_SHAFT_FALL_EVENT_FLAG);
-	//}
-}
 
 volatile uint64_t _last_pgm_fall = 0;
 volatile uint64_t _last_pgm_rise = 0;
@@ -265,7 +255,7 @@ void Check_Pgm_Button() {
 					&ts_ms, sizeof(ts_ms));
 
 				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Gpio_Tx_worker\n");
+					printf("UDP socket error in Check_Pgm_Button\n");
 				}
 				_pgm_notice_sent = true;
 			}
@@ -273,34 +263,6 @@ void Check_Pgm_Button() {
 	}
 }
 
-
-void Gpio_Tx_Worker() {
-	uint32_t flags_read;
-	while (true) {
-		flags_read = event_flags.wait_any(_SHAFT_FALL_EVENT_FLAG | _PGM_FALL_EVENT_FLAG, 1013);
-
-		if (flags_read & osFlagsError) {
-
-			//u_printf("GPIn Interrupt timeout!\n");
-
-		} else {
-			if (flags_read & _SHAFT_FALL_EVENT_FLAG) {
-				//u_printf("  SHAFT ENCDODER\n");
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, odometry_port,
-					&_last_shaft_fall, sizeof(_last_shaft_fall));
-
-				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Gpio_Tx_worker\n");
-				}
-			}
-/*
-			if (flags_read & _PGM_FALL_EVENT_FLAG) {
-				u_printf(" *********************** BUTTON! ****************\n");
-			}
-*/
-		}
-	}
-}
 
 void Sbus_Rx_Interrupt() {
 
@@ -312,7 +274,7 @@ void Sbus_Rx_Interrupt() {
 		int status = sbusParser.rx_char(c);
 
 		if (status == 1) {
-			event_flags.set(_SBUS_EVENT_FLAG);
+			event_flags.set(_EVENT_FLAG_SBUS);
 		}
 	}
 }
@@ -337,7 +299,7 @@ void Gps_Rx_Interrupt() {
 		if ((c == 0x0a) || (_gpsRxBufIdx > 1400)) {
 			memcpy(_gpsTxBuf, _gpsRxBuf, _gpsRxBufIdx);
 			gpsMessageLen = _gpsRxBufIdx;
-			event_flags.set(_GPS_EVENT_FLAG);
+			event_flags.set(_EVENT_FLAG_GPS);
 			_gpsRxBufIdx = 0;
 		}
 	}
@@ -349,7 +311,7 @@ void gps_reTx_worker() {
 	uint32_t flags_read;
 
 	while (true) {
-		flags_read = event_flags.wait_any(_GPS_EVENT_FLAG, 1200);
+		flags_read = event_flags.wait_any(_EVENT_FLAG_GPS, 1200);
 
 		if (flags_read & osFlagsError) {
 
@@ -373,7 +335,7 @@ void sbus_reTx_worker() {
 	uint32_t flags_read;
 
 	while (true) {
-		flags_read = event_flags.wait_any(_SBUS_EVENT_FLAG, 100);
+		flags_read = event_flags.wait_any(_EVENT_FLAG_SBUS, 100);
 
 		if (flags_read & osFlagsError) {
 			u_printf("S.Bus timeout!\n");
@@ -493,6 +455,16 @@ int main() {
 	net.set_network(_MOAB_IP_ADDRESS, _NETMASK, _DEFUALT_GATEWAY);
 	net.set_blocking(false);
 
+	net.connect();
+
+	//  ############################################
+	//   END:  setup network and udp socket
+	//  ###########################################
+	//  #########################################
+	//  ######################################
+
+
+	// UDP Sockets
 	rx_sock.open(&net);
 	rx_sock.bind(12346);
 
@@ -503,29 +475,23 @@ int main() {
 	aux_serial_sock.open(&net);
 	aux_serial_sock.bind(31341);
 
-	net.connect();
 
-	udp_rx_thread.start(udp_rx_worker);
-	aux_serial_thread.start(aux_serial_worker);
 
-	//  ############################################
-	//   END:  setup network and udp socket
-	//  ###########################################
-	//  #########################################
-	//  ######################################
-
+	// Serial ports
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
 	sbus_in.attach(&Sbus_Rx_Interrupt);
+
 	gps_in.attach(&Gps_Rx_Interrupt);
 
 
+	// Background threads
+	udp_rx_thread.start(udp_rx_worker);
+	aux_serial_thread.start(aux_serial_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
 	compass_thread.start(compass_worker);
-	gp_interrupt_messages_thread.start(Gpio_Tx_Worker);
+	shaft.start();
 
-	//shaft_encoder.rise(&Gpin_Interrupt_Shaft);
-	//shaft_encoder.fall(&Gpin_Interrupt_Shaft);
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
 	pgm_switch.fall(&Gpin_Interrupt_Pgm);
@@ -573,6 +539,7 @@ int main() {
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
 
 		bmp1.get_data();
+		/*
 		u_printf("bmp._chipId: 0x%x\n", bmp1._chipId);
 		u_printf("bmp._dig_T1: %d\n", bmp1._dig_T1);
 		u_printf("bmp._dig_T2: %d\n", bmp1._dig_T2);
@@ -589,6 +556,7 @@ int main() {
 
 		u_printf("bmp._raw_temp: %d\n", bmp1._raw_temp);
 		u_printf("bmp._raw_press: %d\n", bmp1._raw_press);
+		*/
 
 		u_printf("bmp._temp: %f\n", bmp1._temp);
 		u_printf("bmp._press: %f\n", bmp1._press);
