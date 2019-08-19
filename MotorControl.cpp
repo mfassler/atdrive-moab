@@ -1,8 +1,4 @@
-/*
- * I can't get the PWM controller on mbed to be consitently smooth --
- *  I think that whenever I update the pulse-width, it restarts the timer.
- *  So I manually do it here, using timeouts
- */
+
 #include "MotorControl.hpp"
 #include "ROBOT_CONFIG.hpp"
 

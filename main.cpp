@@ -25,8 +25,8 @@ EventFlags event_flags;
 #include "SbusParser.hpp"
 //#include "UbloxParser.hpp"
 #include "MotorControl.hpp"
-#include "Compass.hpp"
 
+#include "drivers/ST_LIS3MDL.hpp"
 #include "drivers/BMP280.hpp"
 
 
@@ -67,16 +67,27 @@ DigitalOut myledB(LED2, 0);
 
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
-//MotorControl motorControl(PD_14, PD_15);
-Compass compass(PB_11, PB_10); // sda, then scl
 
 
-// i2c bus for on-board IMU and barometer
+
+/*****************************************
+ * I2C Bus for external GPS module
+ *****************************************/
+//   on schematic it's called:  MAG_SDA and MAG_SCL
+I2C mag_i2c(PB_11, PB_10);  // sda, then scl
+ST_LIS3MDL compass(&mag_i2c);
+
+
+
+/*****************************************
+ * I2C Bus for on-board IMU and barometer
+ *****************************************/
 //   on schematic it's called:  BNO_SDA and BNO_SCL
 //  ports are: PD_13 (sda) and PD_12 (scl)
-I2C i2c_bno(PD_13, PD_12);
-BMP280 bmp1(&i2c_bno);
-//IMU_BNO055 bmp1(PD_13, PD_12);
+I2C bno_i2c(PD_13, PD_12);  // sda, then scl
+BMP280 bmp1(&bno_i2c);
+
+
 
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
@@ -164,7 +175,6 @@ void set_mode_sbus_failsafe() {
 	myledR = 0;
 	myledG = 0;
 	myledB = 0;
-	//compass.set_leds(0, 0, 0);
 
 	motorControl.set_steering(1024);
 	motorControl.set_throttle(352);
@@ -174,7 +184,6 @@ void set_mode_stop() {
 	myledR = 1;
 	myledG = 0;
 	myledB = 0;
-	//compass.set_leds(15, 0, 0);
 
 	motorControl.set_steering(1024);
 	motorControl.set_throttle(352);
@@ -184,7 +193,6 @@ void set_mode_manual() {
 	myledR = 0;
 	myledG = 1;
 	myledB = 0;
-	//compass.set_leds(0, 15, 0);
 
 	motorControl.set_steering(sbup.ch1);
 	motorControl.set_throttle(sbup.ch3);
@@ -194,7 +202,6 @@ void set_mode_auto() {
 	myledR = 0;
 	myledG = 0;
 	myledB = 1;
-	//compass.set_leds(0, 0, 15);
 
 	motorControl.set_steering(auto_ch1);
 	motorControl.set_throttle(auto_ch2);
