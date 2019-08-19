@@ -27,6 +27,8 @@ EventFlags event_flags;
 #include "MotorControl.hpp"
 #include "Compass.hpp"
 
+#include "drivers/BMP280.hpp"
+
 
 uint16_t debug_port = 31337;
 uint16_t sbus_port = 31338;
@@ -68,6 +70,13 @@ MotorControl motorControl(PD_14, PD_15);
 //MotorControl motorControl(PD_14, PD_15);
 Compass compass(PB_11, PB_10); // sda, then scl
 
+
+// i2c bus for on-board IMU and barometer
+//   on schematic it's called:  BNO_SDA and BNO_SCL
+//  ports are: PD_13 (sda) and PD_12 (scl)
+I2C i2c_bno(PD_13, PD_12);
+BMP280 bmp1(&i2c_bno);
+//IMU_BNO055 bmp1(PD_13, PD_12);
 
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
@@ -519,10 +528,14 @@ int main() {
 
 
 	// Look for the compass:
-	if (compass.init() < 1) {
+	if (compass.init() < 0) {
 		u_printf("Failed to initialize compass\n");
 	}
 
+	// BMP280 barometer:
+	if (bmp1.init() < 0) {
+		u_printf("Failed to initialize barometer\n");
+	};
 
 	for (int ct=0; true; ++ct){
 
@@ -551,6 +564,36 @@ int main() {
 		uint16_t sbus_b = motorControl.get_value_b();
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
+
+		bmp1.get_data();
+		u_printf("bmp._chipId: 0x%x\n", bmp1._chipId);
+		u_printf("bmp._dig_T1: %d\n", bmp1._dig_T1);
+		u_printf("bmp._dig_T2: %d\n", bmp1._dig_T2);
+		u_printf("bmp._dig_T3: %d\n", bmp1._dig_T3);
+		u_printf("bmp._dig_P1: %d\n", bmp1._dig_P1);
+		u_printf("bmp._dig_P2: %d\n", bmp1._dig_P2);
+		u_printf("bmp._dig_P3: %d\n", bmp1._dig_P3);
+		u_printf("bmp._dig_P4: %d\n", bmp1._dig_P4);
+		u_printf("bmp._dig_P5: %d\n", bmp1._dig_P5);
+		u_printf("bmp._dig_P6: %d\n", bmp1._dig_P6);
+		u_printf("bmp._dig_P7: %d\n", bmp1._dig_P7);
+		u_printf("bmp._dig_P8: %d\n", bmp1._dig_P8);
+		u_printf("bmp._dig_P9: %d\n", bmp1._dig_P9);
+
+		u_printf("bmp._raw_temp: %d\n", bmp1._raw_temp);
+		u_printf("bmp._raw_press: %d\n", bmp1._raw_press);
+
+		u_printf("bmp._temp: %f\n", bmp1._temp);
+		u_printf("bmp._press: %f\n", bmp1._press);
+		/*
+
+		int _val_a = 99;
+
+		for (int i=0; i<5; i++) {
+			_val_a = bmp1.read_9dof_register(i);
+			u_printf("9dof %x: %x\n", i, _val_a);
+		}
+		*/
 	}
 
    
