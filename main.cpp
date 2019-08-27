@@ -34,7 +34,7 @@ uint16_t debug_port = 31337;
 uint16_t sbus_port = 31338;
 uint16_t button_port = 31345;
 
-uint16_t aux_serial_port_1 = 31341;
+//uint16_t aux_serial_port_1 = 31341;
 
 //uint16_t gps_port = 27110; // ublox
 uint16_t compass_port = 27111;
@@ -68,7 +68,7 @@ DigitalOut myledB(LED2, 0);
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
-ShaftEncoder shaft(PE_9, &net);
+ShaftEncoder shaft(PE_11, &net);
 
 
 /*****************************************
@@ -94,9 +94,9 @@ BMP280 bmp1(&bno_i2c);
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
 //RawSerial aux_serial1(PE_8, PE_7, 38400);
-RawSerial aux_serial1(PA_0, NC, 38400);
+//RawSerial aux_serial1(PA_0, NC, 38400);
 
-InterruptIn pgm_switch(PD_1, PullUp);
+InterruptIn pgm_switch(PE_9, PullUp);
 
 void u_printf(const char *fmt, ...) {
 	va_list args;
@@ -145,10 +145,8 @@ void udp_rx_worker() {
 	}
 }
 
-
+/*
 void aux_serial_worker() {
-	/*
-	 */
 	SocketAddress sockAddr;
 	char inputBuffer[33];
 	inputBuffer[32] = 0;
@@ -163,7 +161,7 @@ void aux_serial_worker() {
 		}
 	}
 }
-
+*/
 
 struct sbus_udp_payload sbup;
 SbusParser sbusParser(&sbup);
@@ -472,8 +470,8 @@ int main() {
 	tx_sock.bind(12347);
 	tx_sock.set_blocking(false);
 
-	aux_serial_sock.open(&net);
-	aux_serial_sock.bind(31341);
+	//aux_serial_sock.open(&net);
+	//aux_serial_sock.bind(31341);
 
 
 
@@ -486,7 +484,7 @@ int main() {
 
 	// Background threads
 	udp_rx_thread.start(udp_rx_worker);
-	aux_serial_thread.start(aux_serial_worker);
+	//aux_serial_thread.start(aux_serial_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
 	compass_thread.start(compass_worker);
