@@ -18,11 +18,16 @@ pip3 install --user mbed-cli
 mbed new .
 mbed export -m NUCLEO_F767ZI -i make_gcc_arm
 
-
-
 # See also:
 ###  https://os.mbed.com/docs/mbed-os/v5.12/tools/exporting.html
 
+
+# You'll need to link one of the config files, like so:
+ln -s ROBOT_CONFIG_followbot1.hpp ROBOT_CONFIG.hpp
+
+
+# To build, type "make":
+make
 
 
 
