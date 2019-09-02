@@ -373,7 +373,7 @@ void compass_worker() {
 		compass_XYZ[2] = 0;
 		if (compass.get_data(compass_XYZ)) {
 
-			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, compass_port,
+			tx_sock.sendto(_BROADCAST_IP_ADDRESS, compass_port,
 					(char *) compass_XYZ, 6);
 
 			// This could produce a lot of messages...
@@ -382,7 +382,7 @@ void compass_worker() {
 			//}
 		}
 
-		wait(0.05); // 20Hz
+		wait_us(50000); // 20Hz
 
 		count++;
 		if (count > 100) {
@@ -514,14 +514,14 @@ int main() {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
 				//motorControl.trigger_pw_out();
-				wait(0.02);
+				wait_us(20000);
 				Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
 				//motorControl.trigger_pw_out();
-				wait(0.02);
+				wait_us(20000);
 				Check_Pgm_Button();
 		}
 
