@@ -17,8 +17,19 @@ public:
 
 	void start();
 
-	uint64_t last_rise;
-	uint64_t last_fall;
+	//uint64_t last_rise;
+	//uint64_t last_fall;
+	volatile uint64_t last_pulse;
+	volatile uint64_t last_last_pulse;
+
+
+	struct Udp_Packet {
+		char _nothing_;
+		char mtype;  // 0: timeout, 1: fall, 2: rise
+		uint16_t ms_since_last_event;
+	};
+
+	struct Udp_Packet udpPacket;
 
 private:
 	InterruptIn *_pin;
