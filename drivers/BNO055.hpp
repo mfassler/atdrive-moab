@@ -9,9 +9,7 @@ class BNO055 {
 public:
 	BNO055(I2C*);
 	ssize_t init();
-	int get_data();
-
-	char data[20];
+	int get_data(char *);
 
 private:
 	I2C *_i2c;

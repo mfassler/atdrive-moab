@@ -35,13 +35,10 @@ uint16_t debug_port = 31337;
 uint16_t sbus_port = 31338;
 uint16_t button_port = 31345;
 
-//uint16_t aux_serial_port_1 = 31341;
-
 //uint16_t gps_port = 27110; // ublox
-uint16_t compass_port = 27111;
 //uint16_t odometry_port = 27112;  // now "SHAFT_PORT" in ShaftEncoder
 uint16_t gps_port_nmea = 27113; // NMEA
-uint16_t bno055_port = 27114;
+uint16_t imu_port = 27114;
 
 
 bool NETWORK_IS_UP = false;
@@ -49,14 +46,12 @@ bool NETWORK_IS_UP = false;
 // Network interface
 EthernetInterface net;
 UDPSocket rx_sock; // one, single thread for RX
-//UDPSocket aux_serial_sock; // one, single thread for RX
 UDPSocket tx_sock; // tx will be completely non-blocking
 
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
 Thread gps_reTx_thread;
 Thread imu_thread;
-//Thread aux_serial_thread;
 Thread gp_interrupt_messages_thread;
 
 // Heartbeat LED:
@@ -95,8 +90,6 @@ BNO055 bno1(&bno_i2c);
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
-//RawSerial aux_serial1(PE_8, PE_7, 38400);
-//RawSerial aux_serial1(PA_0, NC, 38400);
 
 InterruptIn pgm_switch(PE_9, PullUp);
 
@@ -147,23 +140,6 @@ void udp_rx_worker() {
 	}
 }
 
-/*
-void aux_serial_worker() {
-	SocketAddress sockAddr;
-	char inputBuffer[33];
-	inputBuffer[32] = 0;
-
-	aux_serial_sock.set_blocking(true);
-	while (true) {
-
-		int n = aux_serial_sock.recvfrom(&sockAddr, inputBuffer, 32);
-		//u_printf("   for aux serial:  %s\n", inputBuffer);
-		for (int i=0; i<n; ++i) {
-			aux_serial1.putc(inputBuffer[i]);
-		}
-	}
-}
-*/
 
 struct sbus_udp_payload sbup;
 SbusParser sbusParser(&sbup);
@@ -365,39 +341,80 @@ void sbus_reTx_worker() {
 
 void imu_worker() {
 
-	int16_t compass_XYZ[3];
+	struct multi_data {
+		int16_t compass_XYZ[3];  // external compass
+		int16_t _padding1;  // the compiler seems to like 64-bit boundaries
+		char bnoData[20];  // internal IMU
+		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
+
+		// TODO:  do we really need float64 for these numbers?
+		double shaft_pps;
+		double temperature;
+		double pressure;
+	} mData;
+
+	mData._padding1 = 0;
+	mData._padding2 = 0;
+	mData.shaft_pps = 0;
+	mData.temperature = 0;
+	mData.pressure = 0;
 
 	int count = 0;
 	while (true) {
-		// First we zero-out the numbers, to detect if the compass has been disconnected
-		compass_XYZ[0] = 0;
-		compass_XYZ[1] = 0;
-		compass_XYZ[2] = 0;
-		if (compass.get_data(compass_XYZ)) {
+		wait_us(10000); // 100Hz
 
-			tx_sock.sendto(_BROADCAST_IP_ADDRESS, compass_port,
-					(char *) compass_XYZ, 6);
+		// Check the external compass at 20 Hz:
+		if (count % 5 == 0) {
+			// First we zero-out the numbers, to detect if the compass has been disconnected
+			mData.compass_XYZ[0] = 0;
+			mData.compass_XYZ[1] = 0;
+			mData.compass_XYZ[2] = 0;
+
+			int retval = compass.get_data(mData.compass_XYZ);
 
 			// This could produce a lot of messages...
-			//if (retval < 0 && NETWORK_IS_UP) {
-			//	printf("UDP socket error in sbus_reTx_worker\n");
+			//if (retval != 6) {
+			//	printf("failed to get data from external compass\n");
 			//}
 		}
 
-		if (bno1.get_data() >= 0) {
-			tx_sock.sendto(_BROADCAST_IP_ADDRESS, bno055_port,
-					bno1.data, 20);
-		//} else {
-		//	u_printf("bno is NOT ready\n");
+		// TODO:  get the shaft_pps from the ShaftEncdoer
+
+
+		// Check IMU at 50 Hz:
+		if (count % 2 == 0) {
+			int retval = bno1.get_data(mData.bnoData);
+
+			if (retval == 20) {
+				mData.shaft_pps = count + 0.123;
+				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
+					(char*) &mData, sizeof(mData));
+			} else {
+				// This could produce a lot of messages...
+				//printf("failed to get data from external compass\n");
+			}
 		}
 
-		wait_us(50000); // 20Hz
+		// Check temp and pressure at 2 Hz:
+		if (count % 50 == 0) {
+			bmp1.get_data();
+			mData.temperature = bmp1._temp;
+			mData.pressure = bmp1._press;
+
+			//u_printf("bmp._temp: %f\n", bmp1._temp);
+			//u_printf("bmp._press: %f\n", bmp1._press);
+		}
+
 
 		count++;
-		if (count > 100) {
-			// Just in case the compass gets disconnected, we'll ocasionally re-init
-			compass.init();
+		if (count > 500) {
 			count = 0;
+
+			// Every 5 seconds or so, we occasionally re-init the
+			// external GPS and compass (just in case they get disconnected)
+
+			compass.init();
+
 			// UBLOX config command to enable 5 updates per second:
 			const char UBX_CFG_RATE[] = {
 					0xb5, 0x62, 0x06, 0x08, 0x06, 0x00,
@@ -479,10 +496,6 @@ int main() {
 	tx_sock.bind(12347);
 	tx_sock.set_blocking(false);
 
-	//aux_serial_sock.open(&net);
-	//aux_serial_sock.bind(31341);
-
-
 
 	// Serial ports
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
@@ -493,7 +506,6 @@ int main() {
 
 	// Background threads
 	udp_rx_thread.start(udp_rx_worker);
-	//aux_serial_thread.start(aux_serial_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
 	imu_thread.start(imu_worker);
@@ -548,10 +560,6 @@ int main() {
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
 
-		bmp1.get_data();
-
-		u_printf("bmp._temp: %f\n", bmp1._temp);
-		u_printf("bmp._press: %f\n", bmp1._press);
 
 	}
 

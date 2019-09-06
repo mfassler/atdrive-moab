@@ -122,7 +122,7 @@ ssize_t BNO055::init() {
 }
 
 
-int BNO055::get_data() {
+int BNO055::get_data(char* buf) {
 	if (!_ready) {
 		return -1;
 	}
@@ -131,9 +131,9 @@ int BNO055::get_data() {
 
 	txBuf[0] = 0x20;
 	_i2c->write(_addr8bit, txBuf, 1);
-	_i2c->read(_addr8bit, data, 20);
+	_i2c->read(_addr8bit, buf, 20);
 
-	return 0;
+	return 20;
 }
 
 
