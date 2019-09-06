@@ -2,17 +2,10 @@
 #include "BMP280.hpp"
 
 
-// barometer chip is BMP280  -- address is 0x76
-
-
-
 BMP280::BMP280(I2C *i2c) {
 	_i2c = i2c;
-	//_i2c.frequency(400000);
-
 	_addr8bit = 0x76 << 1;
 }
-
 
 
 double BMP280::_compensate_T_double(int32_t adc_T) {
@@ -48,9 +41,6 @@ double BMP280::_compensate_P_double(int32_t adc_P) {
 }
 
 
-
-
-
 int BMP280::read_reg_u8(uint8_t reg, uint8_t *value) {
 	char txBuf[2];
 	char rxBuf[2] = {0, 0};
@@ -64,6 +54,7 @@ int BMP280::read_reg_u8(uint8_t reg, uint8_t *value) {
 
 	return 0;
 }
+
 
 int BMP280::write_reg_u8(uint8_t reg, uint8_t value) {
 	char txBuf[2] = {reg, value};
@@ -147,6 +138,7 @@ ssize_t BMP280::init() {
 
 	return 0;
 }
+
 
 int BMP280::get_data() {
 	char txBuf[2];

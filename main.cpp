@@ -27,6 +27,7 @@
 
 #include "drivers/ST_LIS3MDL.hpp"
 #include "drivers/BMP280.hpp"
+#include "drivers/BNO055.hpp"
 
 EventFlags event_flags;
 
@@ -40,6 +41,7 @@ uint16_t button_port = 31345;
 uint16_t compass_port = 27111;
 //uint16_t odometry_port = 27112;  // now "SHAFT_PORT" in ShaftEncoder
 uint16_t gps_port_nmea = 27113; // NMEA
+uint16_t bno055_port = 27114;
 
 
 bool NETWORK_IS_UP = false;
@@ -47,14 +49,14 @@ bool NETWORK_IS_UP = false;
 // Network interface
 EthernetInterface net;
 UDPSocket rx_sock; // one, single thread for RX
-UDPSocket aux_serial_sock; // one, single thread for RX
+//UDPSocket aux_serial_sock; // one, single thread for RX
 UDPSocket tx_sock; // tx will be completely non-blocking
 
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
 Thread gps_reTx_thread;
-Thread compass_thread;
-Thread aux_serial_thread;
+Thread imu_thread;
+//Thread aux_serial_thread;
 Thread gp_interrupt_messages_thread;
 
 // Heartbeat LED:
@@ -87,7 +89,7 @@ ST_LIS3MDL compass(&mag_i2c);
 //  ports are: PD_13 (sda) and PD_12 (scl)
 I2C bno_i2c(PD_13, PD_12);  // sda, then scl
 BMP280 bmp1(&bno_i2c);
-
+BNO055 bno1(&bno_i2c);
 
 
 // S.Bus is 100000Hz, 8E2, electrically inverted
@@ -361,7 +363,7 @@ void sbus_reTx_worker() {
 }
 
 
-void compass_worker() {
+void imu_worker() {
 
 	int16_t compass_XYZ[3];
 
@@ -380,6 +382,13 @@ void compass_worker() {
 			//if (retval < 0 && NETWORK_IS_UP) {
 			//	printf("UDP socket error in sbus_reTx_worker\n");
 			//}
+		}
+
+		if (bno1.get_data() >= 0) {
+			tx_sock.sendto(_BROADCAST_IP_ADDRESS, bno055_port,
+					bno1.data, 20);
+		//} else {
+		//	u_printf("bno is NOT ready\n");
 		}
 
 		wait_us(50000); // 20Hz
@@ -487,7 +496,7 @@ int main() {
 	//aux_serial_thread.start(aux_serial_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
-	compass_thread.start(compass_worker);
+	imu_thread.start(imu_worker);
 	shaft.start();
 
 
@@ -508,19 +517,22 @@ int main() {
 		u_printf("Failed to initialize barometer\n");
 	};
 
+	// BNO055 IMU:
+	if (bno1.init() < 0) {
+		u_printf("Failed to initialize BNO055 IMU\n");
+	}
+
 	for (int ct=0; true; ++ct){
 
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
-				//motorControl.trigger_pw_out();
 				wait_us(20000);
 				Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
-				//motorControl.trigger_pw_out();
 				wait_us(20000);
 				Check_Pgm_Button();
 		}
@@ -537,36 +549,10 @@ int main() {
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
 
 		bmp1.get_data();
-		/*
-		u_printf("bmp._chipId: 0x%x\n", bmp1._chipId);
-		u_printf("bmp._dig_T1: %d\n", bmp1._dig_T1);
-		u_printf("bmp._dig_T2: %d\n", bmp1._dig_T2);
-		u_printf("bmp._dig_T3: %d\n", bmp1._dig_T3);
-		u_printf("bmp._dig_P1: %d\n", bmp1._dig_P1);
-		u_printf("bmp._dig_P2: %d\n", bmp1._dig_P2);
-		u_printf("bmp._dig_P3: %d\n", bmp1._dig_P3);
-		u_printf("bmp._dig_P4: %d\n", bmp1._dig_P4);
-		u_printf("bmp._dig_P5: %d\n", bmp1._dig_P5);
-		u_printf("bmp._dig_P6: %d\n", bmp1._dig_P6);
-		u_printf("bmp._dig_P7: %d\n", bmp1._dig_P7);
-		u_printf("bmp._dig_P8: %d\n", bmp1._dig_P8);
-		u_printf("bmp._dig_P9: %d\n", bmp1._dig_P9);
-
-		u_printf("bmp._raw_temp: %d\n", bmp1._raw_temp);
-		u_printf("bmp._raw_press: %d\n", bmp1._raw_press);
-		*/
 
 		u_printf("bmp._temp: %f\n", bmp1._temp);
 		u_printf("bmp._press: %f\n", bmp1._press);
-		/*
 
-		int _val_a = 99;
-
-		for (int i=0; i<5; i++) {
-			_val_a = bmp1.read_9dof_register(i);
-			u_printf("9dof %x: %x\n", i, _val_a);
-		}
-		*/
 	}
 
    

@@ -11,8 +11,11 @@ public:
 	ssize_t init();
 	int get_data();
 
-//private:
-public:
+	double _temp;
+	double _press;
+
+
+private:
 
 	uint8_t _chipId;
 
@@ -34,16 +37,11 @@ public:
 
 	int32_t _t_fine;
 
-	double _temp;
-	double _press;
 
-private:
 	I2C *_i2c;
 	int _addr8bit;
 	double _compensate_T_double(int32_t);
 	double _compensate_P_double(int32_t);
-
-public:
 
 	int read_reg_u8(uint8_t reg, uint8_t *value) ;
 	int write_reg_u8(uint8_t reg, uint8_t value) ;
