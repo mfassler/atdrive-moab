@@ -95,8 +95,26 @@ ssize_t BNO055::init() {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 
-	// Set to Fusion-NDOF mode:
-	write_reg_u8(0x3d, 0x0c);
+	// There are 3 fusion modes that we care about:
+	// 0x08 -- Fusion-IMU
+	//   6dof IMU
+	//    heading is only relative because no compass
+	//    pitch and roll are absolute because gravity
+	//
+	// 0x0b -- Fusion-NDOF_FMC_OFF
+	//   9dof sensor fusion, "Fast Magnet Calibration" is off
+	//    gives us an absolute orientation because gravity and compass
+	//
+	// 0x0c -- Fusion-NDOF
+	//   9dof sensor fusion with fast magnet calibration on
+	//    gives us an absolute orientation because gravity and compass
+
+	// All 3 of these modes have a maximum data rate of 100 Hz.
+
+	// Set the operating mode:
+	//write_reg_u8(0x3d, 0x08);  // 6dof IMU, no compass
+	write_reg_u8(0x3d, 0x0b);  // 9dof IMU, slow magnet calibration
+	//write_reg_u8(0x3d, 0x0c);  // 9dof IMU, fast magnet calibration
 
 	_ready = true;
 
