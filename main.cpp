@@ -345,19 +345,26 @@ void imu_worker() {
 		int16_t compass_XYZ[3];  // external compass
 		int16_t _padding1;  // the compiler seems to like 64-bit boundaries
 		char bnoData[20];  // internal IMU
-		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
+
+		float temperature; // degrees celsius, no need for high accuracy
+
+		// Pressure:  typical sensor value is ~100000, with accuracy of +/- 12.0,
+		// (don't forget to convert between Pa and hPa), so this is well 
+		// within the accuracy of float32
+		float pressure;
 
 		// TODO:  do we really need float64 for these numbers?
 		double shaft_pps;
-		double temperature;
-		double pressure;
+
+		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
+
 	} mData;
 
 	mData._padding1 = 0;
 	mData._padding2 = 0;
-	mData.shaft_pps = 0;
 	mData.temperature = 0;
 	mData.pressure = 0;
+	mData.shaft_pps = 0;
 
 	int count = 0;
 	while (true) {
