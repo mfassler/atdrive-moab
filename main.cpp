@@ -36,7 +36,7 @@ uint16_t sbus_port = 31338;
 uint16_t button_port = 31345;
 
 //uint16_t gps_port = 27110; // ublox
-//uint16_t odometry_port = 27112;  // now "SHAFT_PORT" in ShaftEncoder
+//uint16_t odometry_port = 27112;
 uint16_t gps_port_nmea = 27113; // NMEA
 uint16_t imu_port = 27114;
 
@@ -65,7 +65,7 @@ DigitalOut myledB(LED2, 0);
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
-ShaftEncoder shaft(PE_11, &net);
+ShaftEncoder shaft(PE_11);
 
 
 /*****************************************
@@ -352,11 +352,11 @@ void imu_worker() {
 		// (don't forget to convert between Pa and hPa), so this is well 
 		// within the accuracy of float32
 		float pressure;
+		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
 
 		// TODO:  do we really need float64 for these numbers?
 		double shaft_pps;
 
-		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
 
 	} mData;
 
@@ -385,15 +385,13 @@ void imu_worker() {
 			//}
 		}
 
-		// TODO:  get the shaft_pps from the ShaftEncdoer
-
 
 		// Check IMU at 50 Hz:
 		if (count % 2 == 0) {
 			int retval = bno1.get_data(mData.bnoData);
 
 			if (retval == 20) {
-				mData.shaft_pps = count + 0.123;
+				mData.shaft_pps = 0.8*mData.shaft_pps + 0.2*shaft.get_pps();
 				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
 					(char*) &mData, sizeof(mData));
 			} else {
@@ -516,7 +514,6 @@ int main() {
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
 	imu_thread.start(imu_worker);
-	shaft.start();
 
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);

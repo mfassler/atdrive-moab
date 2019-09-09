@@ -3,39 +3,27 @@
 
 #include "mbed.h"
 #include "rtos.h"
-#include "EthernetInterface.h"
 
-#include "ROBOT_CONFIG.hpp"
-#include "EVENT_FLAGS.hpp"
-
-#define SHAFT_PORT 27112
 
 class ShaftEncoder {
 
 public:
-	ShaftEncoder(PinName, EthernetInterface *net); //, EventFlags *event_flags);
+	ShaftEncoder(PinName);
 
-	void start();
-
-	//uint32_t last_rise;
-	//uint32_t last_fall;
-	volatile uint32_t last_pulse;
-	volatile uint32_t last_last_pulse;
-
-	uint32_t udpPacket;
+	double get_pps();
 
 private:
 	InterruptIn *_pin;
-	EventFlags _event_flags;
-	UDPSocket _tx_sock;
 
-	Thread _shaft_thread;
-
-	void _shaft_worker();
+	volatile uint32_t last_pulse4;
+	volatile uint32_t last_pulse3;
+	volatile uint32_t last_pulse2;
+	volatile uint32_t last_pulse1;
+	volatile uint32_t last_pulse0;
+	double current_pps;
 
 	void _rise_interrupt();
-	void _fall_interrupt();
-
+	//void _fall_interrupt();
 };
 
 
