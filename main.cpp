@@ -352,7 +352,9 @@ void imu_worker() {
 		// (don't forget to convert between Pa and hPa), so this is well 
 		// within the accuracy of float32
 		float pressure;
-		int32_t _padding2;  // the compiler seems to like 64-bit boundaries
+
+		uint16_t sbus_a;
+		uint16_t sbus_b;
 
 		// TODO:  do we really need float64 for these numbers?
 		double shaft_pps;
@@ -361,7 +363,7 @@ void imu_worker() {
 	} mData;
 
 	mData._padding1 = 0;
-	mData._padding2 = 0;
+	//mData._padding2 = 0;
 	mData.temperature = 0;
 	mData.pressure = 0;
 	mData.shaft_pps = 0;
@@ -391,6 +393,8 @@ void imu_worker() {
 			int retval = bno1.get_data(mData.bnoData);
 
 			if (retval == 20) {
+				mData.sbus_a = motorControl.get_value_a();
+				mData.sbus_b = motorControl.get_value_b();
 				mData.shaft_pps = 0.8*mData.shaft_pps + 0.2*shaft.get_pps();
 				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
 					(char*) &mData, sizeof(mData));
