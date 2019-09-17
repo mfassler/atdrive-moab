@@ -395,7 +395,7 @@ void imu_worker() {
 			if (retval == 20) {
 				mData.sbus_a = motorControl.get_value_a();
 				mData.sbus_b = motorControl.get_value_b();
-				mData.shaft_pps = 0.8*mData.shaft_pps + 0.2*shaft.get_pps();
+				mData.shaft_pps = shaft.get_pps();
 				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
 					(char*) &mData, sizeof(mData));
 			} else {

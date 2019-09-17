@@ -14,16 +14,15 @@ public:
 
 private:
 	InterruptIn *_pin;
+	Timer timer1;
+	Timer timer2;
 
-	volatile uint32_t last_pulse4;
-	volatile uint32_t last_pulse3;
-	volatile uint32_t last_pulse2;
-	volatile uint32_t last_pulse1;
-	volatile uint32_t last_pulse0;
+	double rise_pps;
+	double fall_pps;
 	double current_pps;
 
 	void _rise_interrupt();
-	//void _fall_interrupt();
+	void _fall_interrupt();
 };
 
 
