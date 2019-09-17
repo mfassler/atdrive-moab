@@ -89,7 +89,7 @@ BNO055 bno1(&bno_i2c);
 
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
-RawSerial gps_in(PE_8, PE_7, 38400);  //tx, then rx
+RawSerial gps_in(PE_8, PE_7, 115200);  //tx, then rx
 
 InterruptIn pgm_switch(PE_9, PullUp);
 
