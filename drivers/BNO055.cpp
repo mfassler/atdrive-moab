@@ -94,6 +94,7 @@ ssize_t BNO055::init() {
 
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
+	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
 
 	// There are 3 fusion modes that we care about:
 	// 0x08 -- Fusion-IMU
@@ -111,10 +112,12 @@ ssize_t BNO055::init() {
 
 	// All 3 of these modes have a maximum data rate of 100 Hz.
 
+	_OPERATING_MODE = 0x0c;
+
 	// Set the operating mode:
-	//write_reg_u8(0x3d, 0x08);  // 6dof IMU, no compass
-	write_reg_u8(0x3d, 0x0b);  // 9dof IMU, slow magnet calibration
-	//write_reg_u8(0x3d, 0x0c);  // 9dof IMU, fast magnet calibration
+	write_reg_u8(0x3d, _OPERATING_MODE);
+
+	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
 
 	_ready = true;
 
@@ -131,10 +134,64 @@ int BNO055::get_data(char* buf) {
 
 	txBuf[0] = 0x20;
 	_i2c->write(_addr8bit, txBuf, 1);
-	_i2c->read(_addr8bit, buf, 20);
+	_i2c->read(_addr8bit, buf, 22);
 
-	return 20;
+	return 22;
 }
+
+
+int BNO055::get_config(char* buf) {
+	if (!_ready) {
+		return -1;
+	}
+
+	// Set to config mode
+	write_reg_u8(0x3d, 0x00);
+
+	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+
+	char txBuf[2];
+
+	txBuf[0] = 0x55;
+	_i2c->write(_addr8bit, txBuf, 1);
+	_i2c->read(_addr8bit, buf, 22);  // 22 bytes of config -- coincidence that it's the same
+
+
+	// Set the operating mode:
+	write_reg_u8(0x3d, _OPERATING_MODE);
+
+	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+
+	return 22;
+}
+
+
+int BNO055::write_config(char* buf) {
+	if (!_ready) {
+		return -1;
+	}
+
+	// Set to config mode
+	write_reg_u8(0x3d, 0x00);
+
+	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+
+	char txBuf[23];
+
+	txBuf[0] = 0x55;
+	memcpy(&(txBuf[1]), buf, 22);
+	_i2c->write(_addr8bit, txBuf, 23);
+
+	wait_us(1000); // dunno if we actually need this...
+
+	// Set the operating mode:
+	write_reg_u8(0x3d, _OPERATING_MODE);
+
+	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+
+	return 22;
+}
+
 
 
 

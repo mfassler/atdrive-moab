@@ -39,6 +39,7 @@ uint16_t button_port = 31345;
 //uint16_t odometry_port = 27112;
 uint16_t gps_port_nmea = 27113; // NMEA
 uint16_t imu_port = 27114;
+uint16_t imu_config_port = 27115;
 
 
 bool NETWORK_IS_UP = false;
@@ -110,6 +111,14 @@ void u_printf(const char *fmt, ...) {
 	}
 }
 
+enum IMU_MODE {
+	normal = 0,
+	config_read = 1,
+	config_write = 2,
+} imu_mode;
+
+char _imu_config[22];
+
 uint16_t auto_ch1 = 1024;
 uint16_t auto_ch2 = 1024;
 void udp_rx_worker() {
@@ -128,7 +137,7 @@ void udp_rx_worker() {
 
 	while (true) {
 
-		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 32);
+		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 64);
 		uint64_t ts = rtos::Kernel::get_ms_count();
 		if (ts - _last_autopilot > 500) {
 			if (auto_ch1 != 1024 || auto_ch2 != 1024) {
@@ -142,6 +151,23 @@ void udp_rx_worker() {
 			_last_autopilot = ts;
 			auto_ch1 = control[0];
 			auto_ch2 = control[1];
+		} else if (n >= 7) {
+			if (strncmp(inputBuffer, "moabCRI", 7) == 0) {
+				u_printf("  ** config read imu\n");
+				imu_mode = config_read;
+
+			} else if (strncmp(inputBuffer, "moabCWI", 7) == 0) {
+				if (n == 30) {
+					u_printf("  ** config write imu\n");
+					memcpy(_imu_config, &(inputBuffer[8]), 22);
+					imu_mode = config_write;
+				} else {
+					u_printf("bad config write command: %d bytes \n", n);
+				}
+
+			} else {
+				u_printf("unknown command\n");
+			}
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
 			printf("rx %d bytes\n", n);
@@ -354,34 +380,67 @@ void sbus_reTx_worker() {
 void imu_worker() {
 
 	struct multi_data {
+
+		// 64 bits:
 		int16_t compass_XYZ[3];  // external compass
 		int16_t _padding1;  // the compiler seems to like 64-bit boundaries
-		char bnoData[20];  // internal IMU
 
+		// 3 * 64 bits:
+		char bnoData[22];  // internal IMU
+		int16_t _padding2;  // the compiler seems to like 64-bit boundaries
+
+		// 64 bits:
 		float temperature; // degrees celsius, no need for high accuracy
 
 		// Pressure:  typical sensor value is ~100000, with accuracy of +/- 12.0,
-		// (don't forget to convert between Pa and hPa), so this is well 
+		// (don't forget to convert between Pa and hPa), so this is well
 		// within the accuracy of float32
 		float pressure;
 
+		// 64 bits:
 		uint16_t sbus_a;
 		uint16_t sbus_b;
+		uint16_t _padding3;  // 64-bit boundary
+		uint16_t _padding4;  // 64-bit boundary
 
+		// 64 bits:
 		// TODO:  do we really need float64 for these numbers?
 		double shaft_pps;
 
-
 	} mData;
 
-	mData._padding1 = 0;
-	//mData._padding2 = 0;
-	mData.temperature = 0;
-	mData.pressure = 0;
-	mData.shaft_pps = 0;
+	memset(&mData, 0, sizeof(mData));
 
 	int count = 0;
 	while (true) {
+		if (imu_mode == config_read) {
+			u_printf(" --------------- inside imu worker, config read\n");
+			char bno_config[22];
+			memset(bno_config, 0, 22);
+
+			int retval = bno1.get_config(bno_config);
+			if (retval == 22) {
+				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_config_port,
+					bno_config, 22);
+			} else {
+				u_printf("Failed to read imu config\n");
+			}
+			imu_mode = normal;
+		}
+
+		if (imu_mode == config_write) {
+			u_printf(" --------------- inside imu worker, config write\n");
+
+			int retval = bno1.write_config(_imu_config);
+			if (retval == 22) {
+				u_printf("Wrote new IMU config\n");
+			} else {
+				u_printf("Failed to write imu config\n");
+			}
+			imu_mode = normal;
+		}
+
+
 		wait_us(10000); // 100Hz
 
 		// Check the external compass at 20 Hz:
@@ -404,7 +463,7 @@ void imu_worker() {
 		if (count % 2 == 0) {
 			int retval = bno1.get_data(mData.bnoData);
 
-			if (retval == 20) {
+			if (retval == 22) {
 				mData.sbus_a = motorControl.get_value_a();
 				mData.sbus_b = motorControl.get_value_b();
 				mData.shaft_pps = shaft.get_pps();

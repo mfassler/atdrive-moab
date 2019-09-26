@@ -10,10 +10,13 @@ public:
 	BNO055(I2C*);
 	ssize_t init();
 	int get_data(char *);
+	int get_config(char *);
+	int write_config(char *);
 
 private:
 	I2C *_i2c;
 	int _addr8bit;
+	char _OPERATING_MODE;
 
 	bool _ready = false;
 
