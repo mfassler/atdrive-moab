@@ -1,5 +1,6 @@
 
 #include "BNO055.hpp"
+#include "ROBOT_CONFIG.hpp"
 
 
 BNO055::BNO055(I2C *i2c) {
@@ -95,6 +96,12 @@ ssize_t BNO055::init() {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+
+
+#ifdef IMU_STORED_CONFIG
+	_i2c->write(_addr8bit, _IMU_CONFIG, 23);
+#endif
+
 
 	// There are 3 fusion modes that we care about:
 	// 0x08 -- Fusion-IMU
