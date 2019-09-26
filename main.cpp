@@ -147,7 +147,7 @@ void udp_rx_worker() {
 			printf("rx %d bytes\n", n);
 			printf(inputBuffer);
 		} else {
-			printf("empty packet\n");
+			//printf("empty packet\n");
 		}
 	}
 }
