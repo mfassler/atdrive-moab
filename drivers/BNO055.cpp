@@ -173,6 +173,10 @@ int BNO055::get_config(char* buf) {
 }
 
 
+
+// TODO:  writing to IMU doesn't seem to do much once the
+// IMU is up and running.  Either add a reset or remove entirely.
+
 int BNO055::write_config(char* buf) {
 	if (!_ready) {
 		return -1;
@@ -198,7 +202,6 @@ int BNO055::write_config(char* buf) {
 
 	return 22;
 }
-
 
 
 

@@ -34,14 +34,14 @@ ssize_t ST_LIS3MDL::init() {
 	//  0x20 -- CTRL_REG1
 	// msb: 0b10000000  - temp sensor enable
 	//      0b0xx00000  - X and Y operating mode  (11: ultra-high performance)
-	//      0b000xxx00  - output rate  (ignored b/c of FAST_ODR)
+	//      0b000xxx00  - output rate  (111: 80 Hz)
 	//      0b00000010  - FAST_ODR (data rate faster than 80 Hz)
 	//      0b00000001  - self-test enabled
 	_write_register(0x20, 0xfc);
 
 	// 0x21 -- CTRL_REG2
 	// msb: 0bx0000000  - msb must always be zero
-	//      0b0xx00000  - fullscale range (00:  +/0 4 gauss)
+	//      0b0xx00000  - fullscale range (00:  +/- 4 gauss)
 	//      0b000x0000  - must always be zero
 	//      0b0000x000  - reboot
 	//      0b00000x00  - soft_rst
