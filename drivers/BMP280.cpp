@@ -109,29 +109,29 @@ ssize_t BMP280::init() {
 	// data from these registers.  TODO:  is this normal?
 
 	read_reg_u16(0x88, &_dig_T1);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000); // wait_us has a timer problem with X Wheels class
 	read_reg_s16(0x8a, &_dig_T2);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x8c, &_dig_T3);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_u16(0x8e, &_dig_P1);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x90, &_dig_P2);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x92, &_dig_P3);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x94, &_dig_P4);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x96, &_dig_P5);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x98, &_dig_P6);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x9a, &_dig_P7);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x9c, &_dig_P8);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 	read_reg_s16(0x9e, &_dig_P9);
-	wait_us(2000);
+	wait_ms(2); //wait_us(2000);
 
 
 	// Start-up the device

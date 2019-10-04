@@ -461,7 +461,7 @@ void imu_worker() {
 		}
 
 
-		wait(0.01); // 100Hz   // wait_us has a timer problem with X Wheels class
+		wait_ms(10); // 100Hz   // wait_us has a timer problem with X Wheels class
 
 		// Check the external compass at 20 Hz:
 		if (count % 5 == 0) {
@@ -618,7 +618,7 @@ int main() {
 	udp_rx_thread.start(udp_rx_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
-	imu_thread.start(imu_worker);
+	//imu_thread.start(imu_worker);
 
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
@@ -649,13 +649,13 @@ int main() {
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
-				wait(0.02);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
+				wait_ms(20);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
 				Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
-				wait(0.02);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
+				wait_ms(20);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
 				Check_Pgm_Button();
 		}
         

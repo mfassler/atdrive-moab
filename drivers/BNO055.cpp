@@ -1,6 +1,6 @@
 
 #include "BNO055.hpp"
-#include "ROBOT_CONFIG.hpp"
+//#include "ROBOT_CONFIG.hpp"
 
 
 BNO055::BNO055(I2C *i2c) {
@@ -95,8 +95,8 @@ ssize_t BNO055::init() {
 
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
-
+	wait_ms(19);    //wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+                    // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 
 #ifdef IMU_STORED_CONFIG
 	_i2c->write(_addr8bit, _IMU_CONFIG, 23);
@@ -124,8 +124,8 @@ ssize_t BNO055::init() {
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
-
+	wait_ms(7); //wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+                // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	_ready = true;
 
 	return 0;
@@ -155,8 +155,8 @@ int BNO055::get_config(char* buf) {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
-
+	wait_ms(19);    //wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+                    // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	char txBuf[2];
 
 	txBuf[0] = 0x55;
@@ -167,8 +167,8 @@ int BNO055::get_config(char* buf) {
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
-
+	wait_ms(7); //wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+                // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	return 22;
 }
 
@@ -185,21 +185,21 @@ int BNO055::write_config(char* buf) {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
-
+	wait_ms(19);    //wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+                    // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	char txBuf[23];
 
 	txBuf[0] = 0x55;
 	memcpy(&(txBuf[1]), buf, 22);
 	_i2c->write(_addr8bit, txBuf, 23);
 
-	wait_us(1000); // dunno if we actually need this...
-
+	wait_ms(1); //wait_us(1000); // dunno if we actually need this...
+                // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
-
+	wait_ms(7); //wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+                // wait_us has a timer problem with X Wheels class, kind of conflict, so the command byte was delayed
 	return 22;
 }
 
