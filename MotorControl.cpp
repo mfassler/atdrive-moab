@@ -1,7 +1,8 @@
 
 #include "MotorControl.hpp"
-#include "ROBOT_CONFIG.hpp"
-
+//#include "ROBOT_CONFIG.hpp"
+#define _STEERING_PW_CENTER 0.001424
+#define _STEERING_PW_RANGE 0.000391
 
 MotorControl::MotorControl(PinName a, PinName b) {
 
