@@ -92,7 +92,7 @@ BNO055 bno1(&bno_i2c);
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 RawSerial gps_in(PE_8, PE_7, 115200);  //tx, then rx
 Serial pc(USBTX,USBRX,115200);                              // for print out something to PC
-//InterruptIn pgm_switch(PE_9, PullUp);
+InterruptIn pgm_switch(PE_9, PullUp);
 
 void u_printf(const char *fmt, ...) {
 	va_list args;
@@ -202,7 +202,7 @@ void set_mode_sbus_failsafe() {
 
 	//motorControl.set_steering(1024);
 	//motorControl.set_throttle(352);
-    //drive.DriveWheels(0.0, 0.0);
+    drive.DriveWheels(0.0, 0.0);
 }
 
 void set_mode_stop() {
@@ -249,7 +249,7 @@ volatile uint64_t _last_pgm_rise = 0;
 uint64_t _last_pgm_fall_debounce = 0;
 uint64_t _last_pgm_rise_debounce = 0;
 uint8_t _pgm_value_debounce = 1;
-/*
+
 void Gpin_Interrupt_Pgm() {
 
 	if (pgm_switch.read()) {
@@ -295,7 +295,7 @@ void Check_Pgm_Button() {
 		}
 	}
 }
-*/
+
 
 void Sbus_Rx_Interrupt() {
 
@@ -621,8 +621,8 @@ int main() {
 	imu_thread.start(imu_worker);
 
 
-	//pgm_switch.rise(&Gpin_Interrupt_Pgm);
-	//pgm_switch.fall(&Gpin_Interrupt_Pgm);
+	pgm_switch.rise(&Gpin_Interrupt_Pgm);
+	pgm_switch.fall(&Gpin_Interrupt_Pgm);
 
 	hb_led.period(0.02);
 	hb_led.write(0.0);
@@ -650,13 +650,13 @@ int main() {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
 				wait(0.02);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
-				//Check_Pgm_Button();
+				Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
 				wait(0.02);     //wait_us(20000);  when use wait_us here, it has some timer problem with X Wheels class
-				//Check_Pgm_Button();
+				Check_Pgm_Button();
 		}
         
 		//u_printf("heeartbeatZ: %d\n", ct);
