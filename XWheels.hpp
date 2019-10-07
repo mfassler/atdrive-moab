@@ -1,10 +1,11 @@
 #ifndef __X_WHEELS_HPP
 #define __X_WHEELS_HPP
+#include "mbed.h"
 
 class XWheels
 {
     public:
-    XWheels();
+    XWheels(RawSerial*);
     //class constructor to initialize baudrate setting 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,6 +64,7 @@ class XWheels
         
 
     private:
+        RawSerial *_uart;
         int i;
         bool ReadOK;
         char Reply[6];     // initial value

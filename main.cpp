@@ -65,7 +65,8 @@ DigitalOut myledB(LED2, 0);
 
 // Motors:
 //MotorControl motorControl(PD_14, PD_15);
-XWheels drive;      // use XWheels class
+RawSerial wheelUART(PD_1,PD_0,9600);
+XWheels drive(&wheelUART);      // use XWheels class
 float motorRPM[2];
 ShaftEncoder shaft(PE_11);
 

@@ -1,23 +1,23 @@
-
 #include "XWheels.hpp"
 #include "mbed.h"
 // VEHICLE CONTROL , UGV DRIVE
 
 #define MIN_STICK 360       
 #define MAX_STICK 1673      
-#define MIN_DEADBAND 1014       //1019 for Rasheed propo
-#define MAX_DEADBAND 1034       //1029 for Rasheed propo
+#define MIN_DEADBAND 1019
+#define MAX_DEADBAND 1029
 #define MID_STICK 1024
 #define DIVIDER 2           // a divider of another wheel's speed, e.g. 2 is half speed of the another wheel's speed
 
 float MAX_RPM = 144.0;         // Max RPM of the wheels, this is limited by wheels itself. Default is 144
 float ZERO_RPM = 0.0;          // No speed
 
-RawSerial uart(PD_1,PD_0,9600);
+//RawSerial uart(PD_1,PD_0,9600);
 
 
-XWheels::XWheels()
-{
+XWheels::XWheels(RawSerial *uart)
+{   
+    _uart = uart;
     
     startTick = true;
     ReadOK = false;
@@ -35,9 +35,9 @@ XWheels::XWheels()
     // Initialized of 17 bytes
     InitHeader1 = 0x01;     // always constant
     InitHeader2 = 0x11;     // always constant
-    ForwardAcc = 0x32;      // 0x00 to 0x64   [0-100]   An acceleration when changing speed value
+    ForwardAcc = 0x64;      // 0x00 to 0x64   [0-100]   An acceleration when changing speed value
     ForwardDelay = 0x00;    // 0x00 t0 0x05   [0-5]     A delay before start to go
-    BrakeDis = 0x14;        // 0x00 to 0x64   [0-100]   Brake distance, should be as short as possible (rigid brake)
+    BrakeDis = 0x0A;        // 0x00 to 0x64   [0-100]   Brake distance, should be as short as possible (rigid brake)
     TurnAcc = 0x32;         // 0x00 to 0x64   [0-100]   Turning acceleration, when two wheels has reverse direction
     TurnDelay = 0x01;       // 0x00 t0 0x05   [0-5]     A delay before start turning
     AccTimeOfStart = 0x00;  // 0x00 to 0x32   [0-50]    increase this will make wheels slower
@@ -163,11 +163,11 @@ void XWheels::waitUntilFourZero()
     while (startTick)
     {
         //t.start();
-        //pc.printf("Readable : %d\n",uart.readable());
+        //pc.printf("Readable : %d\n",_uart->readable());
         //t.stop();
         //pc.printf("Time: %f seconds\n", t.read());
-        while (uart.readable() == true) {
-            char ReadByte = uart.getc();
+        while (_uart->readable() == true) {
+            char ReadByte = _uart->getc();
             Reply[i] = ReadByte;
             //t.start();
             //pc.printf("ReadByte: %X\n", ReadByte);     // print whole string
@@ -190,7 +190,7 @@ void XWheels::waitUntilFourZero()
             ReadOK = false;
 
             }
-            wait_ms(1);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",uart.readable());"
+            wait_ms(1);    // wait_ms(15); DONT CHANGE THIS DELAY   This delay act as "pc.printf("Readable : %d\n",_uart->readable());"
                            // wait_ms(1) mimic all of the printf behavior and it works
     }
 }
@@ -201,23 +201,23 @@ void XWheels::ESCHandShake()
     for(int k=1;k<=20;k++)
     {   
         // This is like initial setup for the ESC
-        uart.putc(InitHeader1);
-        uart.putc(InitHeader2);
-        uart.putc(ForwardAcc);
-        uart.putc(ForwardDelay);
-        uart.putc(BrakeDis);
-        uart.putc(TurnAcc);
-        uart.putc(TurnDelay);
-        uart.putc(AccTimeOfStart);
-        uart.putc(SenRocker);
-        uart.putc(UnderVolt1);
-        uart.putc(UnderVolt2);
-        uart.putc(StartSpeed);
-        uart.putc(DriveMode);
-        uart.putc(PhaseLMotor);
-        uart.putc(PhaseRMotor);
-        uart.putc(MotorConfig);
-        uart.putc(InitCheckSum);
+        _uart->putc(InitHeader1);
+        _uart->putc(InitHeader2);
+        _uart->putc(ForwardAcc);
+        _uart->putc(ForwardDelay);
+        _uart->putc(BrakeDis);
+        _uart->putc(TurnAcc);
+        _uart->putc(TurnDelay);
+        _uart->putc(AccTimeOfStart);
+        _uart->putc(SenRocker);
+        _uart->putc(UnderVolt1);
+        _uart->putc(UnderVolt2);
+        _uart->putc(StartSpeed);
+        _uart->putc(DriveMode);
+        _uart->putc(PhaseLMotor);
+        _uart->putc(PhaseRMotor);
+        _uart->putc(MotorConfig);
+        _uart->putc(InitCheckSum);
 
         if (k==1){
             wait_us(300);
@@ -231,15 +231,15 @@ void XWheels::ESCHandShake()
 
 void XWheels::zeroSpeed()
 {
-    uart.putc(Header1);
-    uart.putc(Header2);
-    uart.putc(0x00);            // Motor1 speed hibyte
-    uart.putc(0x00);            // Motor1 speed lobyte
-    uart.putc(0x00);            // Motor2 speed hibyte
-    uart.putc(0x00);            // Motor2 speed lobyte
-    uart.putc(0xB4);            // Mode hibyte (don't care)
-    uart.putc(0x00);            // Mode lobyte (don't care)
-    uart.putc(0xBF);            // Check sum
+    _uart->putc(Header1);
+    _uart->putc(Header2);
+    _uart->putc(0x00);            // Motor1 speed hibyte
+    _uart->putc(0x00);            // Motor1 speed lobyte
+    _uart->putc(0x00);            // Motor2 speed hibyte
+    _uart->putc(0x00);            // Motor2 speed lobyte
+    _uart->putc(0xB4);            // Mode hibyte (don't care)
+    _uart->putc(0x00);            // Mode lobyte (don't care)
+    _uart->putc(0xBF);            // Check sum
     wait_ms(23);
 
 }
@@ -248,21 +248,9 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
 {  
     float Out_RPM_Right;
     float Out_RPM_Left;
-    
-    
+
     //printf("Out_Right %f\n", Out_RPM_Right);
     //printf("Out_Left %f\n", Out_RPM_Left);
-
-    /*
-    if (rpm1 >= 1 && rpm1 <= 3)
-    {
-        rpm1 = 3;
-    }
-    if (rpm2 >= 1 && rpm2 <=3)
-    {
-        rpm2 = 3;
-    }
-    */
     
     Out_RPM_Right = rpm1;
     Out_RPM_Left = rpm2;
@@ -280,38 +268,18 @@ void XWheels::DriveWheels(float rpm1, float rpm2)
 
     unsigned char Modehibyte = 0x00;   
     unsigned char Modelobyte = 0x00;
-    /*
-    /// Forward or Backward (curve also)///
-    if ((Out_RPM_Right > 0.0 && Out_RPM_Left > 0.0) || (Out_RPM_Right < 0.0 && Out_RPM_Left < 0.0))
-    {
-        Modehibyte = 0xB4;
-        Modelobyte = 0x80;
-    }
-    /// Turn left or turn right (skidding)///
-    else if ((Out_RPM_Right > 0.0 && Out_RPM_Left < 0.0) || (Out_RPM_Right < 0.0 && Out_RPM_Left > 0.0))
-    {
-        Modehibyte = 0x00;
-        Modelobyte = 0x00;
-    }
-    /// Stop ///
-    else
-    {
-        Modehibyte = 0xB4;
-        Modelobyte = 0x00;
-    }
-        */
 
     unsigned char CheckSum = Header1 + Header2 + Motor1hibyte + Motor1lobyte + Motor2hibyte + Motor2lobyte + Modehibyte + Modelobyte;
 
-    uart.putc(Header1);
-    uart.putc(Header2);
-    uart.putc(Motor1hibyte);
-    uart.putc(Motor1lobyte);
-    uart.putc(Motor2hibyte);
-    uart.putc(Motor2lobyte);
-    uart.putc(Modehibyte);
-    uart.putc(Modelobyte);
-    uart.putc(CheckSum);
+    _uart->putc(Header1);
+    _uart->putc(Header2);
+    _uart->putc(Motor1hibyte);
+    _uart->putc(Motor1lobyte);
+    _uart->putc(Motor2hibyte);
+    _uart->putc(Motor2lobyte);
+    _uart->putc(Modehibyte);
+    _uart->putc(Modelobyte);
+    _uart->putc(CheckSum);
 
     wait_ms(23);                      // DON'T change this delay, it's from hacking
 
