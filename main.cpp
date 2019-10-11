@@ -296,25 +296,35 @@ void Sbus_Rx_Interrupt() {
 
 // Incoming buffer, from serial port:
 char _gpsRxBuf[1500];
-int _gpsRxBufIdx = 0;
+int _gpsRxBufLen = 0;
 
-// Outgoing buffer, via network UDP:
-char _gpsTxBuf[1500];
-int gpsMessageLen;
+// Outgoing buffers (circular buffer), via network UDP:
+#define _GPS_RING_BUFFER_SIZE 8
+char _gpsTxBuf[_GPS_RING_BUFFER_SIZE][1500];
+int _gpsTxBufLen[_GPS_RING_BUFFER_SIZE] = {0, 0, 0, 0};
+int _gpsTxBufIdxFI = 0;
+int _gpsTxBufIdxFO = 0;
 
 void Gps_Rx_Interrupt() {
 	int c;
 	while (gps_in.readable()) {
 
 		c = gps_in.getc();
-		_gpsRxBuf[_gpsRxBufIdx] = c;
-		_gpsRxBufIdx++;
+		_gpsRxBuf[_gpsRxBufLen] = c;
+		_gpsRxBufLen++;
 
-		if ((c == 0x0a) || (_gpsRxBufIdx > 1400)) {
-			memcpy(_gpsTxBuf, _gpsRxBuf, _gpsRxBufIdx);
-			gpsMessageLen = _gpsRxBufIdx;
+		if ((c == 0x0a) || (_gpsRxBufLen > 1400)) {
+
+			memcpy(_gpsTxBuf[_gpsTxBufIdxFI], _gpsRxBuf, _gpsRxBufLen);
+			_gpsTxBufLen[_gpsTxBufIdxFI] = _gpsRxBufLen;
+
+			_gpsTxBufIdxFI++;
+			if (_gpsTxBufIdxFI >= _GPS_RING_BUFFER_SIZE) {
+				_gpsTxBufIdxFI = 0;
+			}
+
 			event_flags.set(_EVENT_FLAG_GPS);
-			_gpsRxBufIdx = 0;
+			_gpsRxBufLen = 0;
 		}
 	}
 }
@@ -333,11 +343,18 @@ void gps_reTx_worker() {
 
 		} else {
 
-			int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
-					_gpsTxBuf, gpsMessageLen);
+			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
+				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
+						_gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
 
-			if (retval < 0 && NETWORK_IS_UP) {
-				printf("UDP socket error in gps_reTx_worker\n");
+				_gpsTxBufIdxFO++;
+				if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
+					_gpsTxBufIdxFO = 0;
+				}
+
+				if (retval < 0 && NETWORK_IS_UP) {
+					printf("UDP socket error in gps_reTx_worker\n");
+				}
 			}
 		}
 	}
