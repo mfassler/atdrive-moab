@@ -199,7 +199,7 @@ void set_mode_stop() {
 	myledG = 0;
 	myledB = 0;
 
-	motorControl.set_steering(1024);
+	motorControl.set_steering(sbup.ch1);
 	motorControl.set_throttle(352);
 }
 
