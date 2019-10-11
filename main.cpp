@@ -508,18 +508,9 @@ void imu_worker() {
 			count = 0;
 
 			// Every 5 seconds or so, we occasionally re-init the
-			// external GPS and compass (just in case they get disconnected)
+			// external compass (just in case it gets disconnected)
 
 			compass.init();
-
-			// UBLOX config command to enable 5 updates per second:
-			const char UBX_CFG_RATE[] = {
-					0xb5, 0x62, 0x06, 0x08, 0x06, 0x00,
-					0x28, 0x00, 0x05, 0x00, 0x00, 0x00, 0x41, 0xb8};
-
-			for (int i=0; i<14; i++) {
-				gps_in.putc(UBX_CFG_RATE[i]);
-			}
 		}
 	}
 }
