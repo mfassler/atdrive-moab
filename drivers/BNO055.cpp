@@ -119,7 +119,7 @@ ssize_t BNO055::init() {
 
 	// All 3 of these modes have a maximum data rate of 100 Hz.
 
-	_OPERATING_MODE = 0x0c;
+	_OPERATING_MODE = 0x08;
 
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
