@@ -137,7 +137,7 @@ void udp_rx_worker() {
 	inputBuffer[32] = 0;
 	uint64_t _last_autopilot = 0;
 
-	uint16_t *control = (uint16_t *) &(inputBuffer[0]);
+	float *control = (float *) &(inputBuffer[0]);
 
 	rx_sock.set_blocking(true);
 	rx_sock.set_timeout(500);
@@ -156,12 +156,12 @@ void udp_rx_worker() {
 			}
 		}
 
-		if (n == 2*sizeof(uint16_t)) {
+		if (n == 2*sizeof(float)) {
 			_last_autopilot = ts;
 			//auto_ch1 = control[0];
 			//auto_ch2 = control[1];
-            Raw_rpmR = control[0];
-            Raw_rpmL = control[1];
+            rpmR = control[0];
+            rpmL = control[1];
 		} else if (n >= 7) {
 			if (strncmp(inputBuffer, "moabCRI", 7) == 0) {
 				u_printf("  ** config read imu\n");
@@ -236,8 +236,7 @@ void set_mode_auto() {
 
 	//motorControl.set_steering(auto_ch1);
 	//motorControl.set_throttle(auto_ch2);
-    rpmR = drive.IntToFloat(Raw_rpmR);
-    rpmL = drive.IntToFloat(Raw_rpmL);
+
     drive.DriveWheels(rpmR,rpmL);
 }
 
