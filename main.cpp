@@ -399,7 +399,7 @@ void imu_worker() {
 	struct multi_data {
 
 		// 64 bits:
-		int16_t version;
+		uint16_t version;
 		int16_t compass_XYZ[3];  // external compass
 
 		// 3 * 64 bits:
