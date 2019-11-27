@@ -399,8 +399,8 @@ void imu_worker() {
 	struct multi_data {
 
 		// 64 bits:
+		int16_t version;
 		int16_t compass_XYZ[3];  // external compass
-		int16_t _padding1;  // the compiler seems to like 64-bit boundaries
 
 		// 3 * 64 bits:
 		char bnoData[22];  // internal IMU
@@ -420,6 +420,9 @@ void imu_worker() {
 		uint16_t _padding3;  // 64-bit boundary
 		uint16_t _padding4;  // 64-bit boundary
 
+		// Everything ABOVE here is the official, "version 1" of this protocol
+		// Everything BELOW here is extra, and might change in the future
+
 		// 64 bits:
 		// TODO:  do we really need float64 for these numbers?
 		double shaft_pps;
@@ -427,6 +430,7 @@ void imu_worker() {
 	} mData;
 
 	memset(&mData, 0, sizeof(mData));
+	mData.version = 1;
 
 	int count = 0;
 	while (true) {
