@@ -370,6 +370,7 @@ void sbus_reTx_worker() {
 
 		if (flags_read & osFlagsError) {
 			u_printf("S.Bus timeout!\n");
+			sbup.failsafe = true;
 			set_mode_sbus_failsafe();
 		} else if (sbup.failsafe) {
 			u_printf("S.Bus failsafe!\n");
@@ -383,12 +384,12 @@ void sbus_reTx_worker() {
 				set_mode_auto();
 			}
 
-			int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
-					(char *) &sbup, sizeof(struct sbus_udp_payload));
+		}
+		int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
+				(char *) &sbup, sizeof(struct sbus_udp_payload));
 
-			if (retval < 0 && NETWORK_IS_UP) {
-				printf("UDP socket error in sbus_reTx_worker\n");
-			}
+		if (retval < 0 && NETWORK_IS_UP) {
+			printf("UDP socket error in sbus_reTx_worker\n");
 		}
 	}
 }
