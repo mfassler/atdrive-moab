@@ -370,7 +370,7 @@ void gps_reTx_worker() {
 void sbus_reTx_worker() {
 
 	uint32_t flags_read;
-
+	bool stop_trig = false;
 	while (true) {
 		flags_read = event_flags.wait_any(_EVENT_FLAG_SBUS, 100);
 
@@ -381,12 +381,18 @@ void sbus_reTx_worker() {
 			u_printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
-			if (sbup.ch5 < 688) {
-				set_mode_stop();
-			} else if (sbup.ch5 < 1360) {
+			if if (sbup.ch7 < 1050 && sbup.ch7 > 950 && sbup.ch8 < 1050 && sbup.ch8 > 950 && sbup.ch6 < 1500 && !stop_trig) {
 				set_mode_manual();
-			} else {
+
+			} else if (sbup.ch7 > 1050 && sbup.ch7 < 1100 && sbup.ch8 > 1050 && sbup.ch8 < 1100 && sbup.ch6 < 1500 && !stop_trig) {
 				set_mode_auto();
+			} else {
+				set_mode_stop();
+				if (sbup.ch5 > 1500){
+                    stop_trig = false;
+                } else {
+                    stop_trig = true;
+                }
 			}
             
 			int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
