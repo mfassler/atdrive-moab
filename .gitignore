@@ -1,0 +1,23 @@
+
+
+# config:
+ROBOT_CONFIG.hpp
+
+__pycache__
+
+## vim swap files:
+.*.swp
+
+
+
+## Mbed-os:
+
+.mbed
+BUILD/
+GettingStarted.html
+Makefile
+mbed-os.lib
+mbed-os/
+mbed_config.h
+mbed_settings.py
+
