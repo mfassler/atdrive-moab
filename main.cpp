@@ -66,7 +66,12 @@ DigitalOut myledB(LED2, 0);
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
+#ifdef _TWO_SHAFT_ENCODERS
+ShaftEncoder shaft_a(PF_14);
+ShaftEncoder shaft_b(PE_13);
+#else // _TWO_SHAFT_ENCODERS
 ShaftEncoder shaft(PE_11);
+#endif // _TWO_SHAFT_ENCODERS
 
 
 /*****************************************
@@ -426,7 +431,13 @@ void imu_worker() {
 
 		// 64 bits:
 		// TODO:  do we really need float64 for these numbers?
+#ifdef _TWO_SHAFT_ENCODERS
+		double shaft_a_pps;
+		double shaft_b_pps;
+#else // _TWO_SHAFT_ENCODERS
 		double shaft_pps;
+#endif // _TWO_SHAFT_ENCODERS
+
 
 	} mData;
 
@@ -488,7 +499,14 @@ void imu_worker() {
 			if (retval == 22) {
 				mData.sbus_a = motorControl.get_value_a();
 				mData.sbus_b = motorControl.get_value_b();
+
+#ifdef _TWO_SHAFT_ENCODERS
+				mData.shaft_a_pps = shaft_a.get_pps();
+				mData.shaft_b_pps = shaft_b.get_pps();
+#else // _TWO_SHAFT_ENCODERS
 				mData.shaft_pps = shaft.get_pps();
+#endif // _TWO_SHAFT_ENCODERS
+
 				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
 					(char*) &mData, sizeof(mData));
 			} else {
