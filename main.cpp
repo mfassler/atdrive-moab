@@ -19,9 +19,9 @@
 #include "MOAB_DEFINITIONS.h"
 
 #include "drivers/IMU_module.hpp"
+#include "drivers/GPS_module.hpp"
 
 #include "SbusParser.hpp"
-//#include "UbloxParser.hpp"
 #include "MotorControl.hpp"
 
 
@@ -36,7 +36,6 @@ UDPSocket tx_sock; // tx will be completely non-blocking
 
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
-Thread gps_reTx_thread;
 Thread gp_interrupt_messages_thread;
 
 // Heartbeat LED:
@@ -48,18 +47,18 @@ DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
 
 
-// IMU background process:
+// Background I/O processes:
+//  (minimal inter-dependance; mostly independant of anything else)
 IMU_module imu_module(&net);
+GPS_module gps_module(PE_8, PE_7, &net);
+
 
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
 
-
-
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
-RawSerial gps_in(PE_8, PE_7, 115200);  //tx, then rx
 
 InterruptIn pgm_switch(PE_9, PullUp);
 
@@ -239,72 +238,6 @@ void Sbus_Rx_Interrupt() {
 }
 
 
-// Incoming buffer, from serial port:
-char _gpsRxBuf[1500];
-int _gpsRxBufLen = 0;
-
-// Outgoing buffers (circular buffer), via network UDP:
-#define _GPS_RING_BUFFER_SIZE 8
-char _gpsTxBuf[_GPS_RING_BUFFER_SIZE][1500];
-int _gpsTxBufLen[_GPS_RING_BUFFER_SIZE] = {0, 0, 0, 0};
-int _gpsTxBufIdxFI = 0;
-int _gpsTxBufIdxFO = 0;
-
-void Gps_Rx_Interrupt() {
-	int c;
-	while (gps_in.readable()) {
-
-		c = gps_in.getc();
-		_gpsRxBuf[_gpsRxBufLen] = c;
-		_gpsRxBufLen++;
-
-		if ((c == 0x0a) || (_gpsRxBufLen > 1400)) {
-
-			memcpy(_gpsTxBuf[_gpsTxBufIdxFI], _gpsRxBuf, _gpsRxBufLen);
-			_gpsTxBufLen[_gpsTxBufIdxFI] = _gpsRxBufLen;
-
-			_gpsTxBufIdxFI++;
-			if (_gpsTxBufIdxFI >= _GPS_RING_BUFFER_SIZE) {
-				_gpsTxBufIdxFI = 0;
-			}
-
-			event_flags.set(_EVENT_FLAG_GPS);
-			_gpsRxBufLen = 0;
-		}
-	}
-}
-
-
-void gps_reTx_worker() {
-
-	uint32_t flags_read;
-
-	while (true) {
-		flags_read = event_flags.wait_any(_EVENT_FLAG_GPS, 1200);
-
-		if (flags_read & osFlagsError) {
-
-			u_printf("GPS timeout!\n");
-
-		} else {
-
-			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_NMEA,
-						_gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
-
-				_gpsTxBufIdxFO++;
-				if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
-					_gpsTxBufIdxFO = 0;
-				}
-
-				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in gps_reTx_worker\n");
-				}
-			}
-		}
-	}
-}
-
 
 void sbus_reTx_worker() {
 
@@ -415,15 +348,13 @@ int main() {
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
 	sbus_in.attach(&Sbus_Rx_Interrupt);
 
-	gps_in.attach(&Gps_Rx_Interrupt);
-
 
 	// Background threads
 	udp_rx_thread.start(udp_rx_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
-	gps_reTx_thread.start(gps_reTx_worker);
 
 	imu_module.Start();  // will start a separate thread
+	gps_module.Start();  // will start a separate thread
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
 	pgm_switch.fall(&Gpin_Interrupt_Pgm);
