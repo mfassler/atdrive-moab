@@ -16,31 +16,16 @@
 
 #include "ROBOT_CONFIG.hpp"
 #include "EVENT_FLAGS.hpp"
+#include "MOAB_DEFINITIONS.h"
 
+#include "drivers/IMU_module.hpp"
 
 #include "SbusParser.hpp"
 //#include "UbloxParser.hpp"
 #include "MotorControl.hpp"
 
-#include "ShaftEncoder.hpp"
-
-
-#include "drivers/ST_LIS3MDL.hpp"
-#include "drivers/BMP280.hpp"
-#include "drivers/BNO055.hpp"
 
 EventFlags event_flags;
-
-uint16_t debug_port = 31337;
-uint16_t sbus_port = 31338;
-uint16_t button_port = 31345;
-
-//uint16_t gps_port = 27110; // ublox
-//uint16_t odometry_port = 27112;
-uint16_t gps_port_nmea = 27113; // NMEA
-uint16_t imu_port = 27114;
-uint16_t imu_config_port = 27115;
-
 
 bool NETWORK_IS_UP = false;
  
@@ -52,7 +37,6 @@ UDPSocket tx_sock; // tx will be completely non-blocking
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
 Thread gps_reTx_thread;
-Thread imu_thread;
 Thread gp_interrupt_messages_thread;
 
 // Heartbeat LED:
@@ -63,34 +47,14 @@ DigitalOut myledR(LED3, 0);
 DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
 
+
+// IMU background process:
+IMU_module imu_module(&net);
+
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
 
-#ifdef _TWO_SHAFT_ENCODERS
-ShaftEncoder shaft_a(PF_14);
-ShaftEncoder shaft_b(PE_13);
-#else // _TWO_SHAFT_ENCODERS
-ShaftEncoder shaft(PE_11);
-#endif // _TWO_SHAFT_ENCODERS
 
-
-/*****************************************
- * I2C Bus for external GPS module
- *****************************************/
-//   on schematic it's called:  MAG_SDA and MAG_SCL
-I2C mag_i2c(PB_11, PB_10);  // sda, then scl
-ST_LIS3MDL compass(&mag_i2c);
-
-
-
-/*****************************************
- * I2C Bus for on-board IMU and barometer
- *****************************************/
-//   on schematic it's called:  BNO_SDA and BNO_SCL
-//  ports are: PD_13 (sda) and PD_12 (scl)
-I2C bno_i2c(PD_13, PD_12);  // sda, then scl
-BMP280 bmp1(&bno_i2c);
-BNO055 bno1(&bno_i2c);
 
 
 // S.Bus is 100000Hz, 8E2, electrically inverted
@@ -108,7 +72,7 @@ void u_printf(const char *fmt, ...) {
 	bufLen = vsnprintf(buffer, 1499, fmt, args);
 	va_end(args);
 
-	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, debug_port, buffer, bufLen);
+	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_DEBUG, buffer, bufLen);
 
 	if (retval < 0 && NETWORK_IS_UP) {
 		printf("socket error in u_printf() function\n");
@@ -116,13 +80,6 @@ void u_printf(const char *fmt, ...) {
 	}
 }
 
-enum IMU_MODE {
-	normal = 0,
-	config_read = 1,
-	config_write = 2,
-} imu_mode;
-
-char _imu_config[22];
 
 uint16_t auto_ch1 = 1024;
 uint16_t auto_ch2 = 1024;
@@ -156,23 +113,6 @@ void udp_rx_worker() {
 			_last_autopilot = ts;
 			auto_ch1 = control[0];
 			auto_ch2 = control[1];
-		} else if (n >= 7) {
-			if (strncmp(inputBuffer, "moabCRI", 7) == 0) {
-				u_printf("  ** config read imu\n");
-				imu_mode = config_read;
-
-			} else if (strncmp(inputBuffer, "moabCWI", 7) == 0) {
-				if (n == 30) {
-					u_printf("  ** config write imu\n");
-					memcpy(_imu_config, &(inputBuffer[8]), 22);
-					imu_mode = config_write;
-				} else {
-					u_printf("bad config write command: %d bytes \n", n);
-				}
-
-			} else {
-				u_printf("unknown command\n");
-			}
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
 			printf("rx %d bytes\n", n);
@@ -270,7 +210,7 @@ void Check_Pgm_Button() {
 		if (!_pgm_value_debounce) {
 			if (ts_ms - _last_pgm_rise_debounce > 300) {
 
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, button_port,
+				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_PUSHBUTTON,
 					&ts_ms, sizeof(ts_ms));
 
 				if (retval < 0 && NETWORK_IS_UP) {
@@ -349,7 +289,7 @@ void gps_reTx_worker() {
 		} else {
 
 			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, gps_port_nmea,
+				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_NMEA,
 						_gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
 
 				_gpsTxBufIdxFO++;
@@ -390,7 +330,7 @@ void sbus_reTx_worker() {
 			}
 
 		}
-		int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, sbus_port,
+		int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
 				(char *) &sbup, sizeof(struct sbus_udp_payload));
 
 		if (retval < 0 && NETWORK_IS_UP) {
@@ -400,143 +340,6 @@ void sbus_reTx_worker() {
 }
 
 
-void imu_worker() {
-
-	struct multi_data {
-
-		// 64 bits:
-		uint16_t version;
-		int16_t compass_XYZ[3];  // external compass
-
-		// 3 * 64 bits:
-		char bnoData[22];  // internal IMU
-		int16_t _padding2;  // the compiler seems to like 64-bit boundaries
-
-		// 64 bits:
-		float temperature; // degrees celsius, no need for high accuracy
-
-		// Pressure:  typical sensor value is ~100000, with accuracy of +/- 12.0,
-		// (don't forget to convert between Pa and hPa), so this is well
-		// within the accuracy of float32
-		float pressure;
-
-		// 64 bits:
-		uint16_t sbus_a;
-		uint16_t sbus_b;
-		uint16_t _padding3;  // 64-bit boundary
-		uint16_t _padding4;  // 64-bit boundary
-
-		// Everything ABOVE here is the official, "version 1" of this protocol
-		// Everything BELOW here is extra, and might change in the future
-
-		// 64 bits:
-		// TODO:  do we really need float64 for these numbers?
-#ifdef _TWO_SHAFT_ENCODERS
-		double shaft_a_pps;
-		double shaft_b_pps;
-#else // _TWO_SHAFT_ENCODERS
-		double shaft_pps;
-#endif // _TWO_SHAFT_ENCODERS
-
-
-	} mData;
-
-	memset(&mData, 0, sizeof(mData));
-	mData.version = 1;
-
-	int count = 0;
-	while (true) {
-		if (imu_mode == config_read) {
-			u_printf(" --------------- inside imu worker, config read\n");
-			char bno_config[22];
-			memset(bno_config, 0, 22);
-
-			int retval = bno1.get_config(bno_config);
-			if (retval == 22) {
-				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_config_port,
-					bno_config, 22);
-			} else {
-				u_printf("Failed to read imu config\n");
-			}
-			imu_mode = normal;
-		}
-
-		if (imu_mode == config_write) {
-			u_printf(" --------------- inside imu worker, config write\n");
-
-			int retval = bno1.write_config(_imu_config);
-			if (retval == 22) {
-				u_printf("Wrote new IMU config\n");
-			} else {
-				u_printf("Failed to write imu config\n");
-			}
-			imu_mode = normal;
-		}
-
-
-		wait_us(10000); // 100Hz
-
-		// Check the external compass at 20 Hz:
-		if (count % 5 == 0) {
-			// First we zero-out the numbers, to detect if the compass has been disconnected
-			mData.compass_XYZ[0] = 0;
-			mData.compass_XYZ[1] = 0;
-			mData.compass_XYZ[2] = 0;
-
-			int retval = compass.get_data(mData.compass_XYZ);
-
-			// This could produce a lot of messages...
-			//if (retval != 6) {
-			//	printf("failed to get data from external compass\n");
-			//}
-		}
-
-
-		// Check IMU at 50 Hz:
-		if (count % 2 == 0) {
-			int retval = bno1.get_data(mData.bnoData);
-
-			if (retval == 22) {
-				mData.sbus_a = motorControl.get_value_a();
-				mData.sbus_b = motorControl.get_value_b();
-
-#ifdef _TWO_SHAFT_ENCODERS
-				mData.shaft_a_pps = shaft_a.get_pps();
-				mData.shaft_b_pps = shaft_b.get_pps();
-#else // _TWO_SHAFT_ENCODERS
-				mData.shaft_pps = shaft.get_pps();
-#endif // _TWO_SHAFT_ENCODERS
-
-				int retval2 = tx_sock.sendto(_BROADCAST_IP_ADDRESS, imu_port,
-					(char*) &mData, sizeof(mData));
-			} else {
-				// This could produce a lot of messages...
-				//printf("failed to get data from external compass\n");
-			}
-		}
-
-		// Check temp and pressure at 2 Hz:
-		if (count % 50 == 0) {
-			bmp1.get_data();
-			mData.temperature = bmp1._temp;
-			mData.pressure = bmp1._press;
-
-			//u_printf("bmp._temp: %f\n", bmp1._temp);
-			//u_printf("bmp._press: %f\n", bmp1._press);
-		}
-
-
-		count++;
-		if (count > 500) {
-			count = 0;
-
-			// Every 5 seconds or so, we occasionally re-init the
-			// external compass (just in case it gets disconnected)
-
-			compass.init();
-		}
-	}
-}
 
 
 void eth_callback(nsapi_event_t status, intptr_t param) {
@@ -619,8 +422,8 @@ int main() {
 	udp_rx_thread.start(udp_rx_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 	gps_reTx_thread.start(gps_reTx_worker);
-	imu_thread.start(imu_worker);
 
+	imu_module.Start();  // will start a separate thread
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
 	pgm_switch.fall(&Gpin_Interrupt_Pgm);
@@ -629,33 +432,18 @@ int main() {
 	hb_led.write(0.0);
 
 
-	// Look for the compass:
-	if (compass.init() < 0) {
-		u_printf("Failed to initialize compass\n");
-	}
-
-	// BMP280 barometer:
-	if (bmp1.init() < 0) {
-		u_printf("Failed to initialize barometer\n");
-	};
-
-	// BNO055 IMU:
-	if (bno1.init() < 0) {
-		u_printf("Failed to initialize BNO055 IMU\n");
-	}
-
 	for (int ct=0; true; ++ct){
 
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
-				wait_us(20000);
+				ThisThread::sleep_for(20);
 				Check_Pgm_Button();
 		}
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
-				wait_us(20000);
+				ThisThread::sleep_for(20);
 				Check_Pgm_Button();
 		}
 
