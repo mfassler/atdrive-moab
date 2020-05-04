@@ -72,7 +72,7 @@ void IMU_module::main_worker() {
 
 	int count = 0;
 	while (true) {
-		wait_us(10000); // 100Hz
+		ThisThread::sleep_for(10); // 100Hz
 
 		// Check the external compass at 20 Hz:
 		if (count % 5 == 0) {

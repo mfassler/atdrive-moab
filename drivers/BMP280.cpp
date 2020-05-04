@@ -105,33 +105,33 @@ ssize_t BMP280::init() {
 		return -1;
 	}
 
-	// We seem to need these delays  ("wait_us(2000)") in order to get accurate
+	// We seem to need these delays  (2 ms) in order to get accurate
 	// data from these registers.  TODO:  is this normal?
 
 	read_reg_u16(0x88, &_dig_T1);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x8a, &_dig_T2);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x8c, &_dig_T3);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_u16(0x8e, &_dig_P1);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x90, &_dig_P2);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x92, &_dig_P3);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x94, &_dig_P4);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x96, &_dig_P5);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x98, &_dig_P6);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x9a, &_dig_P7);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x9c, &_dig_P8);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 	read_reg_s16(0x9e, &_dig_P9);
-	wait_us(2000);
+	ThisThread::sleep_for(2);
 
 
 	// Start-up the device

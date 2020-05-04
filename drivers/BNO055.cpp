@@ -95,7 +95,7 @@ ssize_t BNO055::init() {
 
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+	ThisThread::sleep_for(19);  // switch to config mode takes 19ms according to datasheet
 
 
 #ifdef IMU_STORED_CONFIG
@@ -124,7 +124,7 @@ ssize_t BNO055::init() {
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+	ThisThread::sleep_for(7);  // switch to operating mode takes 7ms according to datasheet
 
 	_ready = true;
 
@@ -155,7 +155,7 @@ int BNO055::get_config(char* buf) {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+	ThisThread::sleep_for(19);  // switch to config mode takes 19ms according to datasheet
 
 	char txBuf[2];
 
@@ -167,7 +167,7 @@ int BNO055::get_config(char* buf) {
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+	ThisThread::sleep_for(7);  // switch to operating mode takes 7ms according to datasheet
 
 	return 22;
 }
@@ -185,7 +185,7 @@ int BNO055::write_config(char* buf) {
 	// Set to config mode
 	write_reg_u8(0x3d, 0x00);
 
-	wait_us(19000);  // switch to config mode takes 19ms according to datasheet
+	ThisThread::sleep_for(19);  // switch to config mode takes 19ms according to datasheet
 
 	char txBuf[23];
 
@@ -193,12 +193,12 @@ int BNO055::write_config(char* buf) {
 	memcpy(&(txBuf[1]), buf, 22);
 	_i2c->write(_addr8bit, txBuf, 23);
 
-	wait_us(1000); // dunno if we actually need this...
+	ThisThread::sleep_for(1); // dunno if we actually need this...
 
 	// Set the operating mode:
 	write_reg_u8(0x3d, _OPERATING_MODE);
 
-	wait_us(7000);  // switch to operating mode takes 7ms according to datasheet
+	ThisThread::sleep_for(7);  // switch to operating mode takes 7ms according to datasheet
 
 	return 22;
 }
