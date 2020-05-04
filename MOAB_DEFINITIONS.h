@@ -4,13 +4,13 @@
 
 
 // UBLOX messages from GPS module (not used right now):
-#define UDP_PORT_GPS_UBLOX 37110
+#define UDP_PORT_GPS_UBLOX 27110
 
 // not used:
 //#define UDP_PORT_ODOMETRY 27112
 
 // NMEA messages from GPS module (broadcast):
-#define UDP_PORT_GPS_NMEA 37113
+#define UDP_PORT_GPS_NMEA 27113
 
 // custom binary protocol for IMU data (broadcast):
 #define UDP_PORT_IMU 27114
