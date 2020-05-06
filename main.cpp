@@ -77,7 +77,7 @@ void u_printf(const char *fmt, ...) {
 	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_DEBUG, buffer, bufLen);
 
 	if (retval < 0 && NETWORK_IS_UP) {
-		printf("socket error in u_printf() function\n");
+		printf("sock.err in u_printf(): %d\n", retval);
 		return;
 	}
 }
