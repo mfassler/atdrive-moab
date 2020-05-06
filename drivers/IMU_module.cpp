@@ -33,15 +33,11 @@ ShaftEncoder shaft(PE_11);
 
 
 
-IMU_module::IMU_module(EthernetInterface *net) {
+IMU_module::IMU_module(UDPSocket *tx_sock) {
 	memset(&_mData, 0, sizeof(_mData));
 	_mData.version = 1;
 
-	_sock = new UDPSocket();
-
-	_sock->open(net);
-	_sock->bind(UDP_PORT_IMU);
-
+	_sock = tx_sock;
 }
 
 

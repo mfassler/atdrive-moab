@@ -59,7 +59,7 @@ struct multi_data {
 
 class IMU_module {
 public:
-	IMU_module(EthernetInterface*);
+	IMU_module(UDPSocket*);
 
 	void Start();
 

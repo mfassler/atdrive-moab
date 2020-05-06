@@ -47,9 +47,12 @@ DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
 
 
+// *** NOTE: By default, mbed-os only allows for 4 sockets, so
+// *** we will re-use the tx_sock (non-blocking) wherever possible.
+
 // Background I/O processes:
 //  (minimal inter-dependance; mostly independant of anything else)
-IMU_module imu_module(&net);
+IMU_module imu_module(&tx_sock);
 GPS_module gps_module(PE_8, PE_7, &net);
 
 
