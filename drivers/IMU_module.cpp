@@ -81,7 +81,7 @@ void IMU_module::main_worker() {
 
 			// This could produce a lot of messages...
 			//if (retval != 6) {
-			//	printf("failed to get data from external compass\n");
+			//	printf("failed to get data from external compass\r\n");
 			//}
 		}
 
@@ -105,7 +105,7 @@ void IMU_module::main_worker() {
 					(char*) &_mData, sizeof(_mData));
 			} else {
 				// This could produce a lot of messages...
-				//printf("failed to get data from external compass\n");
+				//printf("failed to get data from external compass\r\n");
 			}
 		}
 

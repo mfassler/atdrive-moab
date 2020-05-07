@@ -79,7 +79,7 @@ void u_printf(const char *fmt, ...) {
 	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_DEBUG, buffer, bufLen);
 
 	if (retval < 0 && NETWORK_IS_UP) {
-		printf("sock.err in u_printf(): %d\n", retval);
+		printf("sock.err in u_printf(): %d\r\n", retval);
 		return;
 	}
 }
@@ -119,10 +119,11 @@ void udp_rx_worker() {
 			auto_ch2 = control[1];
 		} else if (n > 0) {
 			inputBuffer[n] = 0;
-			printf("rx %d bytes\n", n);
+			printf("rx %d bytes:\r\n", n);
 			printf(inputBuffer);
+			printf("\r\n");
 		} else {
-			//printf("empty packet\n");
+			//printf("empty packet\r\n");
 		}
 	}
 }
@@ -218,7 +219,7 @@ void Check_Pgm_Button() {
 					&ts_ms, sizeof(ts_ms));
 
 				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Check_Pgm_Button\n");
+					printf("UDP socket error in Check_Pgm_Button\r\n");
 				}
 				_pgm_notice_sent = true;
 			}
@@ -272,7 +273,7 @@ void sbus_reTx_worker() {
 				(char *) &sbup, sizeof(struct sbus_udp_payload));
 
 		if (retval < 0 && NETWORK_IS_UP) {
-			printf("UDP socket error in sbus_reTx_worker\n");
+			printf("UDP socket error in sbus_reTx_worker\r\n");
 		}
 	}
 }
@@ -294,9 +295,9 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 			NETWORK_IS_UP = true;
 			ip = net.get_ip_address();  // <--dhcp
 			if (ip) {
-				printf("IP address is: %s\n", ip);
+				printf("IP address is: %s\r\n", ip);
 			} else {
-				printf("no IP address... we're screwed\n");
+				printf("no IP address... we're screwed\r\n");
 				//return -1;
 			}
 			break;
@@ -310,13 +311,15 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 			break;
 		default:
 			NETWORK_IS_UP = false;
-			printf("Not supported");
+			printf("Not supported\r\n");
 			break;
 	}
 }
 
  
 int main() {
+	printf("\r\n");
+	printf("   ##### This is AT-Drive Moab #####\r\n");
 
 	//  ######################################
 	//  #########################################
@@ -324,7 +327,7 @@ int main() {
 	//   BEGIN:  setup network and udp socket
 	//  ############################################
 
-	printf("\n\nStarting the network...\n");
+	printf("Starting the network...\r\n");
 
 	net.attach(&eth_callback);
 	net.set_dhcp(false);

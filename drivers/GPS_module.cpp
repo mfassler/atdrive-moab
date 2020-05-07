@@ -63,7 +63,7 @@ void GPS_module::main_worker() {
                 }
 
                 //if (retval < 0 && NETWORK_IS_UP) {
-                //    printf("UDP socket error in gps_reTx_worker\n");
+                //    printf("UDP socket error in gps_reTx_worker\r\n");
                 //}
             }
         }
