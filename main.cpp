@@ -20,6 +20,7 @@
 
 #include "drivers/IMU_module.hpp"
 #include "drivers/GPS_module.hpp"
+//#include "drivers/RTCM3_module.hpp"
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
@@ -54,6 +55,7 @@ DigitalOut myledB(LED2, 0);
 //  (minimal inter-dependance; mostly independant of anything else)
 IMU_module imu_module(&tx_sock);
 GPS_module gps_module(PE_8, PE_7, &net);
+//RTCM3_module rtcm3_module(PD_5, PD_6, &tx_sock);
 
 
 // Motors:
@@ -358,6 +360,7 @@ int main() {
 
 	imu_module.Start();  // will start a separate thread
 	gps_module.Start();  // will start a separate thread
+	//rtcm3_module.Start();  // will start a separate thread
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
 	pgm_switch.fall(&Gpin_Interrupt_Pgm);

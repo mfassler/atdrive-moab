@@ -18,6 +18,9 @@
 // not used anymore:
 //#define UDP_PORT_IMU_CONFIG 27115
 
+// RTCM3 messages from GPS module (broadcast):
+#define UDP_PORT_GPS_RTCM3 27117
+
 
 // printf() style debug messages (broadcast):
 #define UDP_PORT_DEBUG 31337
