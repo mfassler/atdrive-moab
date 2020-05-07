@@ -1,5 +1,5 @@
-#ifndef __GPS_MODULE_HPP
-#define __GPS_MODULE_HPP
+#ifndef __GPS_DAEMON_HPP
+#define __GPS_DAEMON_HPP
 
 #include "mbed.h"
 #include "rtos.h"
@@ -11,9 +11,9 @@
 
 
 
-class GPS_module {
+class GPS_daemon {
 public:
-	GPS_module(PinName, PinName, EthernetInterface*);
+	GPS_daemon(PinName, PinName, EthernetInterface*);
 
 	void Start();
 
@@ -30,5 +30,4 @@ private:
 
 };
 
-#endif // __GPS_MODULE_HPP
-
+#endif // __GPS_DAEMON_HPP

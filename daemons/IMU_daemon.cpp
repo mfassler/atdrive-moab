@@ -1,5 +1,5 @@
 
-#include "IMU_module.hpp"
+#include "IMU_daemon.hpp"
 
 
 extern void u_printf(const char *fmt, ...);  // Defined in main()
@@ -33,7 +33,7 @@ ShaftEncoder shaft(PE_11);
 
 
 
-IMU_module::IMU_module(UDPSocket *tx_sock) {
+IMU_daemon::IMU_daemon(UDPSocket *tx_sock) {
 	memset(&_mData, 0, sizeof(_mData));
 	_mData.version = 1;
 
@@ -41,12 +41,12 @@ IMU_module::IMU_module(UDPSocket *tx_sock) {
 }
 
 
-void IMU_module::Start() {
-	main_thread.start(callback(this, &IMU_module::main_worker));
+void IMU_daemon::Start() {
+	main_thread.start(callback(this, &IMU_daemon::main_worker));
 }
 
 
-void IMU_module::main_worker() {
+void IMU_daemon::main_worker() {
 	ThisThread::sleep_for(1000);
 
 	// Look for the compass:

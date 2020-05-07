@@ -9,10 +9,10 @@
 #include "MOAB_DEFINITIONS.h"
 
 
-class RTCM3_module {
+class RTCM3_daemon {
 
 public:
-	RTCM3_module(PinName, PinName, UDPSocket*);
+	RTCM3_daemon(PinName, PinName, UDPSocket*);
 
 	void Start();
 

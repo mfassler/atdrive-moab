@@ -18,9 +18,9 @@
 #include "EVENT_FLAGS.hpp"
 #include "MOAB_DEFINITIONS.h"
 
-#include "drivers/IMU_module.hpp"
-#include "drivers/GPS_module.hpp"
-//#include "drivers/RTCM3_module.hpp"
+#include "daemons/IMU_daemon.hpp"
+#include "daemons/GPS_daemon.hpp"
+#include "daemons/RTCM3_daemon.hpp"
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
@@ -52,10 +52,10 @@ DigitalOut myledB(LED2, 0);
 // *** we will re-use the tx_sock (non-blocking) wherever possible.
 
 // Background I/O processes:
-//  (minimal inter-dependance; mostly independant of anything else)
-IMU_module imu_module(&tx_sock);
-GPS_module gps_module(PE_8, PE_7, &net);
-//RTCM3_module rtcm3_module(PD_5, PD_6, &tx_sock);
+//  (minimal inter-dependence; mostly independent of anything else)
+IMU_daemon imu_daemon(&tx_sock);
+GPS_daemon gps_daemon(PE_8, PE_7, &net);
+//RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
 
 
 // Motors:
@@ -291,7 +291,7 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 			printf("Local IP address set.\r\n");
 			break;
 		case NSAPI_STATUS_GLOBAL_UP:
-			printf("Global IP address set.\r\n");
+			printf("Global IP address set.  ");
 			NETWORK_IS_UP = true;
 			ip = net.get_ip_address();  // <--dhcp
 			if (ip) {
@@ -361,9 +361,9 @@ int main() {
 	udp_rx_thread.start(udp_rx_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 
-	imu_module.Start();  // will start a separate thread
-	gps_module.Start();  // will start a separate thread
-	//rtcm3_module.Start();  // will start a separate thread
+	imu_daemon.Start();  // will start a separate thread
+	gps_daemon.Start();  // will start a separate thread
+	//rtcm3_daemon.Start();  // will start a separate thread
 
 	pgm_switch.rise(&Gpin_Interrupt_Pgm);
 	pgm_switch.fall(&Gpin_Interrupt_Pgm);

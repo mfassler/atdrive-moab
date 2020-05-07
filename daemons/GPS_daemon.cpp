@@ -1,5 +1,5 @@
 
-#include "GPS_module.hpp"
+#include "GPS_daemon.hpp"
 
 extern void u_printf(const char *fmt, ...);  // Defined in main()
 
@@ -21,26 +21,26 @@ int _gpsTxBufIdxFO = 0;
 
 
 
-GPS_module::GPS_module(PinName tx, PinName rx, EthernetInterface *net) {
+GPS_daemon::GPS_daemon(PinName tx, PinName rx, EthernetInterface *net) {
 	_gps_in = new RawSerial(tx, rx, 115200);  //tx, then rx
 
 	_sock = new UDPSocket();
 	_sock->open(net);
 	_sock->bind(UDP_PORT_GPS_NMEA);
 
-	_gps_in->attach(callback(this, &GPS_module::_Gps_Rx_Interrupt));
+	_gps_in->attach(callback(this, &GPS_daemon::_Gps_Rx_Interrupt));
 
 }
 
 
-void GPS_module::Start() {
-	main_thread.start(callback(this, &GPS_module::main_worker));
+void GPS_daemon::Start() {
+	main_thread.start(callback(this, &GPS_daemon::main_worker));
 }
 
 
 
 
-void GPS_module::main_worker() {
+void GPS_daemon::main_worker() {
 
     uint32_t flags_read;
 
@@ -72,7 +72,7 @@ void GPS_module::main_worker() {
 
 
 
-void GPS_module::_Gps_Rx_Interrupt() {
+void GPS_daemon::_Gps_Rx_Interrupt() {
     int c;
     while (_gps_in->readable()) {
 

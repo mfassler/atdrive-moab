@@ -9,7 +9,7 @@
  *
  */
 
-#include "RTCM3_module.hpp"
+#include "RTCM3_daemon.hpp"
 
 
 extern void u_printf(const char *fmt, ...); // defined in main
@@ -24,22 +24,22 @@ int _outputIDX = 0;
 
 
 
-RTCM3_module::RTCM3_module(PinName tx, PinName rx, UDPSocket *tx_sock) {
+RTCM3_daemon::RTCM3_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
 	_serport = new RawSerial(tx, rx, 115200);
 
 	_sock = tx_sock;
-	_serport->attach(callback(this, &RTCM3_module::_Serial_Rx_Interrupt));
+	_serport->attach(callback(this, &RTCM3_daemon::_Serial_Rx_Interrupt));
 }
 
 
 
-void RTCM3_module::Start() {
-	main_thread.start(callback(this, &RTCM3_module::main_worker));
+void RTCM3_daemon::Start() {
+	main_thread.start(callback(this, &RTCM3_daemon::main_worker));
 }
 
 
 
-void RTCM3_module::_Serial_Rx_Interrupt() {
+void RTCM3_daemon::_Serial_Rx_Interrupt() {
 
 	int c;
 
@@ -88,7 +88,7 @@ void RTCM3_module::_Serial_Rx_Interrupt() {
 
 
 
-void RTCM3_module::main_worker() {
+void RTCM3_daemon::main_worker() {
 
 	uint32_t flags_read;
 

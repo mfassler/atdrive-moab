@@ -57,9 +57,9 @@ struct multi_data {
 
 
 
-class IMU_module {
+class IMU_daemon {
 public:
-	IMU_module(UDPSocket*);
+	IMU_daemon(UDPSocket*);
 
 	void Start();
 
