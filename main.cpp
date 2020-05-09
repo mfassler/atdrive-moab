@@ -21,6 +21,7 @@
 #include "daemons/IMU_daemon.hpp"
 #include "daemons/GPS_daemon.hpp"
 #include "daemons/RTCM3_daemon.hpp"
+#include "daemons/PushButton_daemon.hpp"
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
@@ -37,7 +38,6 @@ UDPSocket tx_sock; // tx will be completely non-blocking
 
 Thread udp_rx_thread;
 Thread sbus_reTx_thread;
-Thread gp_interrupt_messages_thread;
 
 // Heartbeat LED:
 PwmOut hb_led(PA_6);
@@ -56,6 +56,7 @@ DigitalOut myledB(LED2, 0);
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
+PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
 
 
 // Motors:
@@ -65,7 +66,6 @@ MotorControl motorControl(PD_14, PD_15);
 // S.Bus is 100000Hz, 8E2, electrically inverted
 RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 
-InterruptIn pgm_switch(PE_9, PullUp);
 
 void u_printf(const char *fmt, ...) {
 	va_list args;
@@ -131,7 +131,6 @@ void udp_rx_worker() {
 
 struct sbus_udp_payload sbup;
 SbusParser sbusParser(&sbup);
-//UbloxParser ubloxParser;
 
 
 
@@ -171,61 +170,6 @@ void set_mode_auto() {
 	motorControl.set_throttle(auto_ch2);
 }
 
-
-
-
-
-volatile uint64_t _last_pgm_fall = 0;
-volatile uint64_t _last_pgm_rise = 0;
-uint64_t _last_pgm_fall_debounce = 0;
-uint64_t _last_pgm_rise_debounce = 0;
-uint8_t _pgm_value_debounce = 1;
-
-void Gpin_Interrupt_Pgm() {
-
-	if (pgm_switch.read()) {
-		_last_pgm_rise = rtos::Kernel::get_ms_count();
-	} else {
-		_last_pgm_fall = rtos::Kernel::get_ms_count();
-	}
-}
-
-
-bool _pgm_notice_sent = false;
-void Check_Pgm_Button() {
-	// We do all this time-stamp weirdness to de-bounce the switch
-	uint64_t ts_ms = rtos::Kernel::get_ms_count();
-
-	// Switch must be stable for at least 30ms:
-	if ((ts_ms - _last_pgm_fall > 30) && (ts_ms - _last_pgm_rise > 30)) {
-		// current stable value:
-		uint8_t val = pgm_switch.read();
-		if (_pgm_value_debounce != val) { // debounce value has changed
-			_pgm_value_debounce = val;
-			if (val) {
-				_last_pgm_rise_debounce = ts_ms;
-				_pgm_notice_sent = false;
-			} else {
-				_last_pgm_fall_debounce = ts_ms;
-			}
-		}
-	}
-
-	if (!_pgm_notice_sent) {
-		if (!_pgm_value_debounce) {
-			if (ts_ms - _last_pgm_rise_debounce > 300) {
-
-				int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_PUSHBUTTON,
-					&ts_ms, sizeof(ts_ms));
-
-				if (retval < 0 && NETWORK_IS_UP) {
-					printf("UDP socket error in Check_Pgm_Button\r\n");
-				}
-				_pgm_notice_sent = true;
-			}
-		}
-	}
-}
 
 
 void Sbus_Rx_Interrupt() {
@@ -364,30 +308,28 @@ int main() {
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread
 	//rtcm3_daemon.Start();  // will start a separate thread
+	pushButton_daemon.Start();  // will start a separate thread
 
-	pgm_switch.rise(&Gpin_Interrupt_Pgm);
-	pgm_switch.fall(&Gpin_Interrupt_Pgm);
 
 	hb_led.period(0.02);
 	hb_led.write(0.0);
 
-
 	for (int ct=0; true; ++ct){
 
+		// Heartbeat LED glows brighter:
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
 				ThisThread::sleep_for(20);
-				Check_Pgm_Button();
 		}
+		// Heartbeat LED dims darker:
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
 				ThisThread::sleep_for(20);
-				Check_Pgm_Button();
 		}
 
-		u_printf("heeartbeatZ: %d\n", ct);
+		u_printf("heartbeat: %d\n", ct);
 
 		// Report motor values (for convience when setting trim)
 		uint16_t sbus_a = motorControl.get_value_a();
