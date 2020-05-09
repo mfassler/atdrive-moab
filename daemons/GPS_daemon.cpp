@@ -42,58 +42,58 @@ void GPS_daemon::Start() {
 
 void GPS_daemon::main_worker() {
 
-    uint32_t flags_read;
+	uint32_t flags_read;
 
-    while (true) {
-        flags_read = _event_flags.wait_any(_EVENT_FLAG_GPS, 1200);
+	while (true) {
+		flags_read = _event_flags.wait_any(_EVENT_FLAG_GPS, 1200);
 
-        if (flags_read & osFlagsError) {
+		if (flags_read & osFlagsError) {
 
-            u_printf("GPS timeout!\n");
+			u_printf("GPS timeout!\n");
 
-        } else {
+		} else {
 
-            while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
-                int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_NMEA,
-                        _gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
+			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
+				int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_NMEA,
+						_gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
 
-                _gpsTxBufIdxFO++;
-                if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
-                    _gpsTxBufIdxFO = 0;
-                }
+				_gpsTxBufIdxFO++;
+				if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
+					_gpsTxBufIdxFO = 0;
+				}
 
-                //if (retval < 0 && NETWORK_IS_UP) {
-                //    printf("UDP socket error in gps_reTx_worker\r\n");
-                //}
-            }
-        }
-    }
+				//if (retval < 0 && NETWORK_IS_UP) {
+				//	printf("UDP socket error in gps_reTx_worker\r\n");
+				//}
+			}
+		}
+	}
 }
 
 
 
 void GPS_daemon::_Gps_Rx_Interrupt() {
-    int c;
-    while (_gps_in->readable()) {
+	int c;
+	while (_gps_in->readable()) {
 
-        c = _gps_in->getc();
-        _gpsRxBuf[_gpsRxBufLen] = c;
-        _gpsRxBufLen++;
+		c = _gps_in->getc();
+		_gpsRxBuf[_gpsRxBufLen] = c;
+		_gpsRxBufLen++;
 
-        if ((c == 0x0a) || (_gpsRxBufLen > 1400)) {
+		if ((c == 0x0a) || (_gpsRxBufLen > 1400)) {
 
-            memcpy(_gpsTxBuf[_gpsTxBufIdxFI], _gpsRxBuf, _gpsRxBufLen);
-            _gpsTxBufLen[_gpsTxBufIdxFI] = _gpsRxBufLen;
+			memcpy(_gpsTxBuf[_gpsTxBufIdxFI], _gpsRxBuf, _gpsRxBufLen);
+			_gpsTxBufLen[_gpsTxBufIdxFI] = _gpsRxBufLen;
 
-            _gpsTxBufIdxFI++;
-            if (_gpsTxBufIdxFI >= _GPS_RING_BUFFER_SIZE) {
-                _gpsTxBufIdxFI = 0;
-            }
+			_gpsTxBufIdxFI++;
+			if (_gpsTxBufIdxFI >= _GPS_RING_BUFFER_SIZE) {
+				_gpsTxBufIdxFI = 0;
+			}
 
-            _event_flags.set(_EVENT_FLAG_GPS);
-            _gpsRxBufLen = 0;
-        }
-    }
+			_event_flags.set(_EVENT_FLAG_GPS);
+			_gpsRxBufLen = 0;
+		}
+	}
 }
 
 
