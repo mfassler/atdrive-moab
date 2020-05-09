@@ -35,6 +35,7 @@ GPS_daemon::GPS_daemon(PinName tx, PinName rx, EthernetInterface *net) {
 
 void GPS_daemon::Start() {
 	main_thread.start(callback(this, &GPS_daemon::main_worker));
+	udp_rx_thread.start(callback(this, &GPS_daemon::udp_rx_worker));
 }
 
 
@@ -67,6 +68,29 @@ void GPS_daemon::main_worker() {
 				//}
 			}
 		}
+	}
+}
+
+
+void GPS_daemon::udp_rx_worker() {
+	/*
+	 * If the auto-pilot wants to send messages to the GPS modules, we handle that
+	 * here.  This is intended for RTCM3 messages.
+	 */
+
+	SocketAddress sockAddr;
+	char inputBuffer[512];
+	inputBuffer[511] = 0;
+
+
+	while (true) {
+		int n = _sock->recvfrom(&sockAddr, inputBuffer, 512);
+		int i;
+		for (i=0; i<n; ++i) {
+			_gps_in->putc(inputBuffer[i]);
+		}
+		//inputBuffer[i] = 0;
+		//u_printf(inputBuffer);
 	}
 }
 

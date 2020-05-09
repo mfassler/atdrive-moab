@@ -24,8 +24,10 @@ private:
 	EventFlags _event_flags;  // I think these are shared globally...
 
 	Thread main_thread;
+	Thread udp_rx_thread;
 
 	void main_worker();
+	void udp_rx_worker();
 	void _Gps_Rx_Interrupt();
 
 };
