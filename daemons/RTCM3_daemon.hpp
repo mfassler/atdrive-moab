@@ -28,6 +28,15 @@ private:
 	void main_worker(void);
 	void _Serial_Rx_Interrupt(void);
 
+
+	// Ring buffer for serial-to-UDP operations:
+	#define _RING_BUFFER_SIZE 4096
+
+	char _ringBuf[_RING_BUFFER_SIZE];
+	int _inputIDX = 0;
+	int _outputIDX = 0;
+
+
 };
 
 #endif // __RTCM3_MODULE_HPP

@@ -15,12 +15,13 @@
 extern void u_printf(const char *fmt, ...); // defined in main
 
 
-// Ring buffer for serial-to-UDP operations:
-#define _RING_BUFFER_SIZE 4
-char _ringBuf[_RING_BUFFER_SIZE][1030];
-int _bufLen[_RING_BUFFER_SIZE] = {0, 0, 0, 0};
-int _inputIDX = 0;
-int _outputIDX = 0;
+int mod(int a, int b) {
+	// The C/C++ version of the % operator doesn't return the same signs as
+	// the Python version, so we use this:
+
+	int r = a % b;
+	return r < 0 ? r + b : r; 
+}
 
 
 
@@ -41,48 +42,17 @@ void RTCM3_daemon::Start() {
 
 void RTCM3_daemon::_Serial_Rx_Interrupt() {
 
-	int c;
-
-	int plen = 0;
 	while (_serport->readable()) {
-		c = _serport->getc();
 
-		if (c == 0xd3) {  // magic start byte
-			_ringBuf[_inputIDX][0] = c;
-			_bufLen[_inputIDX] = 1;
+		_ringBuf[_inputIDX] = _serport->getc();
 
-			c = _serport->getc();  //packet_length, high byte
-			_ringBuf[_inputIDX][1] = c;
-			_bufLen[_inputIDX] = 2;
-			if (c > 3) {
-				u_printf("WARN: plen hi-byte: %d\n", c);
-			}
-			plen = (0x03 & c) << 8;
-
-			c = _serport->getc();  //packet_length, lo byte
-			_ringBuf[_inputIDX][2] = c;
-			_bufLen[_inputIDX] = 3;
-			plen |= c;
-
-			plen += 3;  // also get the cksum at the end
-
-			// Read the packet
-			for (int i=0; i<plen; ++i) {
-				_ringBuf[_inputIDX][_bufLen[_inputIDX]] = _serport->getc();
-				_bufLen[_inputIDX]++;
-			}
-
-			// Trigger out-going send on UDP:
-			_event_flags.set(_EVENT_FLAG_RTCM3);
-
-			_inputIDX++;
-			if (_inputIDX >= _RING_BUFFER_SIZE) {
-				_inputIDX = 0;
-			}
-
-		} else {
-			plen = 0;
+		_inputIDX++;
+		if (_inputIDX >= _RING_BUFFER_SIZE) {
+			_inputIDX = 0;
 		}
+
+		// Trigger out-going send on UDP:
+		_event_flags.set(_EVENT_FLAG_RTCM3);
 	}
 }
 
@@ -91,23 +61,73 @@ void RTCM3_daemon::_Serial_Rx_Interrupt() {
 void RTCM3_daemon::main_worker() {
 
 	uint32_t flags_read;
+	char output_buffer[1029];
 
 	while (true) {
-		flags_read = _event_flags.wait_any(_EVENT_FLAG_RTCM3, 1200);
+		flags_read = _event_flags.wait_any(_EVENT_FLAG_RTCM3, 250);
 
 		if (flags_read & osFlagsError) {
 
-			u_printf("RTCM3 timeout!\n");
+			uint8_t plen_hibyte = _ringBuf[  mod(_outputIDX+1, _RING_BUFFER_SIZE) ];
+			uint8_t plen_lobyte = _ringBuf[  mod(_outputIDX+2, _RING_BUFFER_SIZE) ];
+			int bufLen = mod(_inputIDX-_outputIDX, _RING_BUFFER_SIZE);
+			u_printf("RTCM3 timeout!  %d %d %d %x %x %x\n",
+				 _inputIDX, _outputIDX, bufLen, 
+
+				_ringBuf[_outputIDX], plen_hibyte, plen_lobyte);
 
 		} else {
 
-			while (_outputIDX != _inputIDX) {
-				int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_RTCM3, 
-						_ringBuf[_outputIDX], _bufLen[_outputIDX]);
 
+			// Every RTCM3 packet starts with a magic byte of 0xd3, so scan for that:
+			while (_ringBuf[_outputIDX] != 0xd3 && (_inputIDX != _outputIDX)) {
+				u_printf(" -- RTCM3 missing magic start byte\n");
 				_outputIDX++;
 				if (_outputIDX >= _RING_BUFFER_SIZE) {
 					_outputIDX = 0;
+				}
+			}
+
+			// RTCM3 packet is:
+			//   - 1 char, magic start byte
+			//   - 2 chars for payload length, max 1023
+			//   -   ... payload ...
+			//   - 3 chars for checksum
+			//  so max size is: 3+1023+3 = 1029 bytes
+			//     min size is: 3+3 = 6 bytes
+
+			int bufLen = mod(_inputIDX-_outputIDX, _RING_BUFFER_SIZE);
+			if (bufLen >= 6) {
+				uint8_t plen_hibyte = _ringBuf[  mod(_outputIDX+1, _RING_BUFFER_SIZE) ];
+				uint8_t plen_lobyte = _ringBuf[  mod(_outputIDX+2, _RING_BUFFER_SIZE) ];
+
+				int plen = (((0x03 & plen_hibyte) << 8) | plen_lobyte) + 6;
+
+
+				if (bufLen >= plen) {  // We have a complete RTCM3 packet
+					if (plen_hibyte > 3) {
+						u_printf("RTCM3 WARN: plen_hibyte: %d\n", plen_hibyte);
+					}
+
+					if ((_outputIDX + plen) < _RING_BUFFER_SIZE) {
+						// Contiguous data, single copy:
+						memcpy(output_buffer, &(_ringBuf[_outputIDX]), plen);
+
+					} else {
+						// wrapped around the ring buffer, so 2 copies:
+						int len1 = _RING_BUFFER_SIZE - _outputIDX;
+						int len2 = plen - len1;
+						memcpy(output_buffer, &(_ringBuf[_outputIDX]), len1);
+						memcpy(&(output_buffer[len1]), _ringBuf, len2);
+					}
+
+					if (output_buffer[0] != 0xd3) {
+						u_printf("RTCM3 WARN: wtf: %d %d\n", _inputIDX, _outputIDX);
+					}
+					_outputIDX = mod(_outputIDX+plen, _RING_BUFFER_SIZE);
+
+					int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_RTCM3, 
+						output_buffer, plen);
 				}
 			}
 		}
