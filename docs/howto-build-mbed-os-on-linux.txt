@@ -2,13 +2,17 @@
 
 #  You'll need some cross-compilers:
 dnf install arm-none-eabi-binutils-cs
-dnf install arm-none-eabi-gdb  # don't worry if this isn't available
 dnf install arm-none-eabi-gcc-cs
 dnf install arm-none-eabi-newlib
 dnf install arm-none-eabi-gcc-cs-c++
 
 # From this directory, you'll need to clone mbed-os:
 git clone https://github.com/ARMmbed/mbed-os.git
+
+# Moab doesn't build against mbed-os v6 yet:
+cd mbed-os
+git checkout mbed-os-5.15.3
+cd ../
 
 # Install the mbed CLI tools:
 pip3 install --user -r mbed-os/requirements.txt
