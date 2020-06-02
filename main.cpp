@@ -58,6 +58,7 @@ IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
 PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
+MUXBoard_daemon mux_daemon(PD_5, PD_6, &tx_sock);
 
 
 // Motors:
@@ -310,6 +311,7 @@ int main() {
 	gps_daemon.Start();  // will start a separate thread
 	//rtcm3_daemon.Start();  // will start a separate thread
 	pushButton_daemon.Start();  // will start a separate thread
+	mux_daemon.Start();
 
 
 	hb_led.period(0.02);
