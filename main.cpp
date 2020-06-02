@@ -22,6 +22,7 @@
 #include "daemons/GPS_daemon.hpp"
 #include "daemons/RTCM3_daemon.hpp"
 #include "daemons/PushButton_daemon.hpp"
+#include "daemons/MUXBoard_daemon.hpp"
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
