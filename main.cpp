@@ -25,7 +25,7 @@
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
-
+#include "RxCommandParser.hpp"
 
 EventFlags event_flags;
 
@@ -33,10 +33,8 @@ bool NETWORK_IS_UP = false;
  
 // Network interface
 EthernetInterface net;
-UDPSocket rx_sock; // one, single thread for RX
 UDPSocket tx_sock; // tx will be completely non-blocking
 
-Thread udp_rx_thread;
 Thread sbus_reTx_thread;
 
 // Heartbeat LED:
@@ -46,6 +44,7 @@ PwmOut hb_led(PA_6);
 DigitalOut myledR(LED3, 0);
 DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
+
 
 
 uint16_t sbus_a_forImuPacket = 0;
@@ -62,6 +61,7 @@ GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
 PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
 
+RxCommandParser rxParser(&net);
 
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
@@ -89,48 +89,6 @@ void u_printf(const char *fmt, ...) {
 }
 
 
-uint16_t auto_ch1 = 1024;
-uint16_t auto_ch2 = 1024;
-void udp_rx_worker() {
-	/*
-	 * Here we receive throttle and steering control from the auto-pilot computer
-	 */
-	SocketAddress sockAddr;
-	char inputBuffer[33];
-	inputBuffer[32] = 0;
-	uint64_t _last_autopilot = 0;
-
-	uint16_t *control = (uint16_t *) &(inputBuffer[0]);
-
-	rx_sock.set_blocking(true);
-	rx_sock.set_timeout(500);
-
-	while (true) {
-
-		int n = rx_sock.recvfrom(&sockAddr, inputBuffer, 64);
-		uint64_t ts = rtos::Kernel::get_ms_count();
-		if (ts - _last_autopilot > 500) {
-			if (auto_ch1 != 1024 || auto_ch2 != 1024) {
-				u_printf("Timeout: resetting auto sbus values\n");
-				auto_ch1 = 1024;
-				auto_ch2 = 1024;
-			}
-		}
-
-		if (n == 2*sizeof(uint16_t)) {
-			_last_autopilot = ts;
-			auto_ch1 = control[0];
-			auto_ch2 = control[1];
-		} else if (n > 0) {
-			inputBuffer[n] = 0;
-			printf("rx %d bytes:\r\n", n);
-			printf(inputBuffer);
-			printf("\r\n");
-		} else {
-			//printf("empty packet\r\n");
-		}
-	}
-}
 
 
 struct sbus_udp_payload sbup;
@@ -179,11 +137,11 @@ void set_mode_auto() {
 	myledG = 0;
 	myledB = 1;
 
-	motorControl.set_steering(auto_ch1);
-	motorControl.set_throttle(auto_ch2);
+	motorControl.set_steering(rxParser.auto_ch1);
+	motorControl.set_throttle(rxParser.auto_ch2);
 
-	sbus_a_forImuPacket = auto_ch1;
-	sbus_b_forImuPacket = auto_ch2;
+	sbus_a_forImuPacket = rxParser.auto_ch1;
+	sbus_b_forImuPacket = rxParser.auto_ch2;
 }
 
 
@@ -304,13 +262,11 @@ int main() {
 
 
 	// UDP Sockets
-	rx_sock.open(&net);
-	rx_sock.bind(12346);
-
 	tx_sock.open(&net);
 	tx_sock.bind(12347);
 	tx_sock.set_blocking(false);
 
+	rxParser.Start();  // will start a separate thread
 
 	// Serial ports
 	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
@@ -318,7 +274,6 @@ int main() {
 
 
 	// Background threads
-	udp_rx_thread.start(udp_rx_worker);
 	sbus_reTx_thread.start(sbus_reTx_worker);
 
 	imu_daemon.Start();  // will start a separate thread
@@ -359,9 +314,7 @@ int main() {
 
 	}
 
-   
 	// Close the socket and bring down the network interface
-	rx_sock.close();
 	tx_sock.close();
 	net.disconnect();
 	return 0;
