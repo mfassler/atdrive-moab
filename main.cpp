@@ -21,6 +21,7 @@
 #include "daemons/IMU_daemon.hpp"
 #include "daemons/GPS_daemon.hpp"
 #include "daemons/RTCM3_daemon.hpp"
+#include "daemons/YDLidar_daemon.hpp"
 #include "daemons/PushButton_daemon.hpp"
 
 #include "SbusParser.hpp"
@@ -59,6 +60,7 @@ uint16_t sbus_b_forImuPacket = 0;
 IMU_daemon imu_daemon(&tx_sock, &sbus_a_forImuPacket, &sbus_b_forImuPacket);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
+YDLidar_daemon lidar(PG_14, PG_9, &tx_sock);
 PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
 
 RxCommandParser rxParser(&net);
@@ -171,11 +173,11 @@ void sbus_reTx_worker() {
 		flags_read = event_flags.wait_any(_EVENT_FLAG_SBUS, 100);
 
 		if (flags_read & osFlagsError) {
-			u_printf("S.Bus timeout!\n");
+			//u_printf("S.Bus timeout!\n");
 			sbup.failsafe = true;
 			set_mode_sbus_failsafe();
 		} else if (sbup.failsafe) {
-			u_printf("S.Bus failsafe!\n");
+			//u_printf("S.Bus failsafe!\n");
 			set_mode_sbus_failsafe();
 		} else {
 			if (sbup.ch5 < 688) {
@@ -279,6 +281,7 @@ int main() {
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread
 	//rtcm3_daemon.Start();  // will start a separate thread
+	lidar.Start();  // will start a separate thread
 	pushButton_daemon.Start();  // will start a separate thread
 
 
