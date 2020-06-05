@@ -21,6 +21,9 @@
 // RTCM3 messages from GPS module (broadcast):
 #define UDP_PORT_GPS_RTCM3 27117
 
+// YDLidar data:
+#define UDP_PORT_YDLIDAR 27118
+
 
 // printf() style debug messages (broadcast):
 #define UDP_PORT_DEBUG 31337

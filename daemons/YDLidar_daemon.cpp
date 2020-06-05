@@ -78,10 +78,10 @@ void YDLidar_daemon::main_tx_worker() {
 	_serport->putc(0xa5);
 	_serport->putc(0x60);
 
-	ThisThread::sleep_for(5000);
+	//ThisThread::sleep_for(5000);
 	// stop:
-	_serport->putc(0xa5);
-	_serport->putc(0x65);
+	//_serport->putc(0xa5);
+	//_serport->putc(0x65);
 
 }
 
@@ -171,11 +171,33 @@ void YDLidar_daemon::main_rx_worker() {
 					if (bufLen >= (lsn * 2 + 10)) {
 						u_printf("YDL, cont: %d %d\n", ct, lsn);
 
+						// Copy FSA and LSA to UDP packet:
+						output_buffer[0] = _ringBuf[  mod(_outputIDX+4, _RING_BUFFER_SIZE) ];
+						output_buffer[1] = _ringBuf[  mod(_outputIDX+5, _RING_BUFFER_SIZE) ];
+						output_buffer[2] = _ringBuf[  mod(_outputIDX+6, _RING_BUFFER_SIZE) ];
+						output_buffer[3] = _ringBuf[  mod(_outputIDX+7, _RING_BUFFER_SIZE) ];
 
-						// TODO:  actually parse the data here...
 
+						// Copy payload to UDP packet:
+						int iStart = mod(_outputIDX+10, _RING_BUFFER_SIZE);
+						int iStop = mod(iStart + lsn*2, _RING_BUFFER_SIZE);
+
+						if (iStop > iStart) {
+							// Contiguous data, single copy:
+							memcpy(&(output_buffer[4]), &(_ringBuf[iStart]), lsn*2);
+
+						} else {
+							// wrapped around the ring buffer, so 2 copies:
+							int len1 = _RING_BUFFER_SIZE - iStart;
+							int len2 = iStop;
+							memcpy(&(output_buffer[4]), &(_ringBuf[iStart]), len1);
+							memcpy(&(output_buffer[4+len1]), _ringBuf, len2);
+						}
 
 						_outputIDX = mod(_outputIDX + lsn*2 + 10, _RING_BUFFER_SIZE);
+
+						int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_YDLIDAR, 
+							output_buffer, lsn*2+4);
 					}
 
 				} else {
@@ -187,55 +209,6 @@ void YDLidar_daemon::main_rx_worker() {
 					}
 				}
 			}
-
-
-
-
-
-/*
-			// RTCM3 packet is:
-			//   - 1 char, magic start byte
-			//   - 2 chars for payload length, max 1023
-			//   -   ... payload ...
-			//   - 3 chars for checksum
-			//  so max size is: 3+1023+3 = 1029 bytes
-			//     min size is: 3+3 = 6 bytes
-
-			int bufLen = mod(_inputIDX-_outputIDX, _RING_BUFFER_SIZE);
-			if (bufLen >= 6) {
-				uint8_t plen_hibyte = _ringBuf[  mod(_outputIDX+1, _RING_BUFFER_SIZE) ];
-				uint8_t plen_lobyte = _ringBuf[  mod(_outputIDX+2, _RING_BUFFER_SIZE) ];
-
-				int plen = (((0x03 & plen_hibyte) << 8) | plen_lobyte) + 6;
-
-
-				if (bufLen >= plen) {  // We have a complete RTCM3 packet
-					if (plen_hibyte > 3) {
-						u_printf("RTCM3 WARN: plen_hibyte: %d\n", plen_hibyte);
-					}
-
-					if ((_outputIDX + plen) < _RING_BUFFER_SIZE) {
-						// Contiguous data, single copy:
-						memcpy(output_buffer, &(_ringBuf[_outputIDX]), plen);
-
-					} else {
-						// wrapped around the ring buffer, so 2 copies:
-						int len1 = _RING_BUFFER_SIZE - _outputIDX;
-						int len2 = plen - len1;
-						memcpy(output_buffer, &(_ringBuf[_outputIDX]), len1);
-						memcpy(&(output_buffer[len1]), _ringBuf, len2);
-					}
-
-					if (output_buffer[0] != 0xd3) {
-						u_printf("RTCM3 WARN: wtf: %d %d\n", _inputIDX, _outputIDX);
-					}
-					_outputIDX = mod(_outputIDX+plen, _RING_BUFFER_SIZE);
-
-					int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_RTCM3, 
-						output_buffer, plen);
-				}
-			}
-*/
 
 		}
 	}
