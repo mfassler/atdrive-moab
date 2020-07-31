@@ -18,12 +18,12 @@
 #include "EVENT_FLAGS.hpp"
 #include "MOAB_DEFINITIONS.h"
 
+#include "daemons/SBus_daemon.hpp"
 #include "daemons/IMU_daemon.hpp"
 #include "daemons/GPS_daemon.hpp"
-#include "daemons/RTCM3_daemon.hpp"
+//#include "daemons/RTCM3_daemon.hpp"
 #include "daemons/PushButton_daemon.hpp"
 
-#include "SbusParser.hpp"
 #include "MotorControl.hpp"
 #include "RxCommandParser.hpp"
 
@@ -50,8 +50,10 @@ DigitalOut myledB(LED2, 0);
 // *** NOTE: By default, mbed-os only allows for 4 sockets, so
 // *** we will re-use the tx_sock (non-blocking) wherever possible.
 
+
 // Background I/O processes:
 //  (minimal inter-dependence; mostly independent of anything else)
+SBus_daemon sbus_daemon(PD_2, &tx_sock);
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
@@ -61,10 +63,6 @@ RxCommandParser rxParser(&net);
 
 // Motors:
 MotorControl motorControl(PD_14, PD_15);
-
-
-// S.Bus is 100000Hz, 8E2, electrically inverted
-RawSerial sbus_in(NC, PD_2, 100000);  // tx, then rx
 
 
 void u_printf(const char *fmt, ...) {
@@ -85,10 +83,6 @@ void u_printf(const char *fmt, ...) {
 }
 
 
-
-
-struct sbus_udp_payload sbup;
-SbusParser sbusParser(&sbup);
 
 enum Moab_State_t {
 	NoSignal = 0,
@@ -120,7 +114,7 @@ void set_mode_stop() {
 	myledG = 0;
 	myledB = 0;
 
-	motorControl.set_steering(sbup.ch1);
+	motorControl.set_steering(sbus_daemon.sbup.ch1);
 	motorControl.set_throttle(352);
 
 	// Convient info for LocationServices, on the host PC:
@@ -134,11 +128,11 @@ void set_mode_manual() {
 	myledG = 1;
 	myledB = 0;
 
-	motorControl.set_steering(sbup.ch1);
-	motorControl.set_throttle(sbup.ch3);
+	motorControl.set_steering(sbus_daemon.sbup.ch1);
+	motorControl.set_throttle(sbus_daemon.sbup.ch3);
 
 	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(sbup.ch1, sbup.ch3, moab_state);
+	imu_daemon.set_extra_info(sbus_daemon.sbup.ch1, sbus_daemon.sbup.ch3, moab_state);
 }
 
 void set_mode_auto() {
@@ -157,53 +151,20 @@ void set_mode_auto() {
 
 
 
-void Sbus_Rx_Interrupt() {
-
-	int c;
-
-	while (sbus_in.readable()) {
-
-		c = sbus_in.getc();
-		int status = sbusParser.rx_char(c);
-
-		if (status == 1) {
-			event_flags.set(_EVENT_FLAG_SBUS);
-		}
-	}
-}
-
-
-
-void sbus_reTx_worker() {
-
-	uint32_t flags_read;
-
-	while (true) {
-		flags_read = event_flags.wait_any(_EVENT_FLAG_SBUS, 100);
-
-		if (flags_read & osFlagsError) {
-			u_printf("S.Bus timeout!\n");
-			sbup.failsafe = true;
-			set_mode_sbus_failsafe();
-		} else if (sbup.failsafe) {
-			u_printf("S.Bus failsafe!\n");
-			set_mode_sbus_failsafe();
-		} else {
-			if (sbup.ch5 < 688) {
-				set_mode_stop();
-			} else if (sbup.ch5 < 1360) {
-				set_mode_manual();
-			} else {
-				set_mode_auto();
-			}
-
-		}
-		int retval = tx_sock.sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
-				(char *) &sbup, sizeof(struct sbus_udp_payload));
-
-		if (retval < 0 && NETWORK_IS_UP) {
-			printf("UDP socket error in sbus_reTx_worker\r\n");
-		}
+void radio_callback(bool force_stop) {
+	if (force_stop) {
+		// radio disconnected or something...
+		u_printf("S.Bus timeout!\n");
+		set_mode_sbus_failsafe();
+	} else if (sbus_daemon.sbup.failsafe) {
+		u_printf("S.Bus failsafe!\n");
+		set_mode_sbus_failsafe();
+	} else if (sbus_daemon.sbup.ch5 < 688) {
+		set_mode_stop();
+	} else if (sbus_daemon.sbup.ch5 < 1360) {
+		set_mode_manual();
+	} else {
+		set_mode_auto();
 	}
 }
 
@@ -279,13 +240,9 @@ int main() {
 
 	rxParser.Start();  // will start a separate thread
 
-	// Serial ports
-	sbus_in.format(8, SerialBase::Even, 2);  // S.Bus is 8E2
-	sbus_in.attach(&Sbus_Rx_Interrupt);
-
-
 	// Background threads
-	sbus_reTx_thread.start(sbus_reTx_worker);
+	sbus_daemon.attachCallback(&radio_callback);
+	sbus_daemon.Start();  // will start a separate thread
 
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread
