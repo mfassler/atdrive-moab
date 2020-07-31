@@ -47,16 +47,12 @@ DigitalOut myledB(LED2, 0);
 
 
 
-uint16_t sbus_a_forImuPacket = 0;
-uint16_t sbus_b_forImuPacket = 0;
-
-
 // *** NOTE: By default, mbed-os only allows for 4 sockets, so
 // *** we will re-use the tx_sock (non-blocking) wherever possible.
 
 // Background I/O processes:
 //  (minimal inter-dependence; mostly independent of anything else)
-IMU_daemon imu_daemon(&tx_sock, &sbus_a_forImuPacket, &sbus_b_forImuPacket);
+IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
 PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
@@ -94,9 +90,18 @@ void u_printf(const char *fmt, ...) {
 struct sbus_udp_payload sbup;
 SbusParser sbusParser(&sbup);
 
+enum Moab_State_t {
+	NoSignal = 0,
+	Stop = 1,
+	Manual = 2,
+	Auto = 3
+} moab_state = Stop;
 
 
 void set_mode_sbus_failsafe() {
+	// Radio contact with the transmitter has timed-out, so stop the motors
+	moab_state = NoSignal;
+
 	myledR = 0;
 	myledG = 0;
 	myledB = 0;
@@ -104,11 +109,13 @@ void set_mode_sbus_failsafe() {
 	motorControl.set_steering(1024);
 	motorControl.set_throttle(352);
 
-	sbus_a_forImuPacket = 1024;
-	sbus_b_forImuPacket = 352;
+	// Convient info for LocationServices, on the host PC:
+	imu_daemon.set_extra_info(1024, 352, moab_state);
 }
 
 void set_mode_stop() {
+	moab_state = Stop;
+
 	myledR = 1;
 	myledG = 0;
 	myledB = 0;
@@ -116,11 +123,13 @@ void set_mode_stop() {
 	motorControl.set_steering(sbup.ch1);
 	motorControl.set_throttle(352);
 
-	sbus_a_forImuPacket = 1024;
-	sbus_b_forImuPacket = 352;
+	// Convient info for LocationServices, on the host PC:
+	imu_daemon.set_extra_info(1024, 352, moab_state);
 }
 
 void set_mode_manual() {
+	moab_state = Manual;
+
 	myledR = 0;
 	myledG = 1;
 	myledB = 0;
@@ -128,11 +137,13 @@ void set_mode_manual() {
 	motorControl.set_steering(sbup.ch1);
 	motorControl.set_throttle(sbup.ch3);
 
-	sbus_a_forImuPacket = sbup.ch1;
-	sbus_b_forImuPacket = sbup.ch3;
+	// Convient info for LocationServices, on the host PC:
+	imu_daemon.set_extra_info(sbup.ch1, sbup.ch3, moab_state);
 }
 
 void set_mode_auto() {
+	moab_state = Auto;
+
 	myledR = 0;
 	myledG = 0;
 	myledB = 1;
@@ -140,8 +151,8 @@ void set_mode_auto() {
 	motorControl.set_steering(rxParser.auto_ch1);
 	motorControl.set_throttle(rxParser.auto_ch2);
 
-	sbus_a_forImuPacket = rxParser.auto_ch1;
-	sbus_b_forImuPacket = rxParser.auto_ch2;
+	// Convient info for LocationServices, on the host PC:
+	imu_daemon.set_extra_info(rxParser.auto_ch1, rxParser.auto_ch2, moab_state);
 }
 
 

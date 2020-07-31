@@ -36,7 +36,8 @@ struct multi_data {
 	// 64 bits:
 	uint16_t sbus_a;
 	uint16_t sbus_b;
-	uint16_t _padding3;  // 64-bit boundary
+	uint8_t moab_mode;
+	uint8_t _padding3;  // 64-bit boundary
 	uint16_t _padding4;  // 64-bit boundary
 
 	// Everything ABOVE here is the official, "version 1" of this protocol
@@ -59,14 +60,13 @@ struct multi_data {
 
 class IMU_daemon {
 public:
-	IMU_daemon(UDPSocket*, uint16_t*, uint16_t*);
+	IMU_daemon(UDPSocket*);
 
 	void Start();
 
-private:
+	void set_extra_info(uint16_t, uint16_t, uint8_t);
 
-	uint16_t *_sbus_a;
-	uint16_t *_sbus_b;
+private:
 
 	struct multi_data _mData;
 
