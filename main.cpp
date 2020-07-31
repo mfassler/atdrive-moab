@@ -35,8 +35,6 @@ bool NETWORK_IS_UP = false;
 EthernetInterface net;
 UDPSocket tx_sock; // tx will be completely non-blocking
 
-Thread sbus_reTx_thread;
-
 // Heartbeat LED:
 PwmOut hb_led(PA_6);
 
