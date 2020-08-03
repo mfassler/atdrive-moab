@@ -18,6 +18,7 @@
 #include "EVENT_FLAGS.hpp"
 #include "MOAB_DEFINITIONS.h"
 
+//#include "daemons/Radio169_daemon.hpp"
 #include "daemons/SBus_daemon.hpp"
 #include "daemons/IMU_daemon.hpp"
 #include "daemons/GPS_daemon.hpp"
@@ -52,6 +53,7 @@ DigitalOut myledB(LED2, 0);
 // Background I/O processes:
 //  (minimal inter-dependence; mostly independent of anything else)
 SBus_daemon sbus_daemon(PD_2, &tx_sock);
+//Radio169_daemon r169_daemon(NC, PD_6, &tx_sock);
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
@@ -241,6 +243,9 @@ int main() {
 	// Background threads
 	sbus_daemon.attachCallback(&radio_callback);
 	sbus_daemon.Start();  // will start a separate thread
+	//r169_daemon.attachCallback(&radio_callback);
+	//r169_daemon.Start();  // will start a separate thread
+
 
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread

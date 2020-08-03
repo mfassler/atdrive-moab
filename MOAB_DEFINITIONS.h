@@ -26,6 +26,9 @@
 #define UDP_PORT_DEBUG 31337
 
 #define UDP_PORT_SBUS 31338
+// 31339 is used for something else on atdrive-moab-tools...
+
+#define UDP_PORT_RADIO169 31340
 
 #define UDP_PORT_PUSHBUTTON 31345
 
