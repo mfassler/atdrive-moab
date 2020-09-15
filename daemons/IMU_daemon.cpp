@@ -38,6 +38,8 @@ IMU_daemon::IMU_daemon(UDPSocket *tx_sock) {
 	_mData.version = 1;
 
 	_sock = tx_sock;
+
+	adc0 = new AnalogIn(PA_3);
 }
 
 
@@ -95,6 +97,10 @@ void IMU_daemon::main_worker() {
 			//}
 		}
 
+		// Check the ADC at 5 Hz:
+		if (count % 20 == 0) {
+			_mData.adc0 = adc0->read_u16();
+		}
 
 		// Check IMU at 50 Hz:
 		if (count % 2 == 0) {

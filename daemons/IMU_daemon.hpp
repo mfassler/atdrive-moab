@@ -38,7 +38,7 @@ struct multi_data {
 	uint16_t sbus_b;
 	uint8_t moab_mode;
 	uint8_t _padding3;  // 64-bit boundary
-	uint16_t _padding4;  // 64-bit boundary
+	uint16_t adc0;
 
 	// Everything ABOVE here is the official, "version 1" of this protocol
 	// Everything BELOW here is extra, and might change in the future
@@ -74,6 +74,7 @@ private:
 
 	Thread main_thread;
 
+	AnalogIn *adc0;
 	void main_worker();
 };
 
