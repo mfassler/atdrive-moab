@@ -63,10 +63,28 @@ void MotorControl::set_steering(uint16_t value) {
 
 // These numbers are specific to this particular servo on this particular
 // frame:
+
+#ifndef _THROTTLE_PW_CENTER
 #define _THROTTLE_PW_CENTER 0.001515
+#endif // _THROTTLE_PW_CENTER
+
+#ifndef _THROTTLE_PW_RANGE
 #define _THROTTLE_PW_RANGE 0.000400
-const float _THROTTLE_PW_MAX = _THROTTLE_PW_CENTER + _THROTTLE_PW_RANGE;
-const float _THROTTLE_PW_MIN = _THROTTLE_PW_CENTER - _THROTTLE_PW_RANGE;
+#endif // _THROTTLE_PW_RANGE
+
+#ifndef _THROTTLE_PW_MAX
+const float THROTTLE_PW_MAX = _THROTTLE_PW_CENTER + _THROTTLE_PW_RANGE;
+#else
+const float THROTTLE_PW_MAX = _THROTTLE_PW_MAX;
+#endif // _THROTTLE_PW_MAX
+
+#ifndef _THROTTLE_PW_MIN
+const float THROTTLE_PW_MIN = _THROTTLE_PW_CENTER - _THROTTLE_PW_RANGE;
+#else
+const float THROTTLE_PW_MIN = _THROTTLE_PW_MIN;
+#endif // _THROTTLE_PW_MIN
+
+
 void MotorControl::set_throttle(uint16_t value) {
 
 	if (value > SBUS_MAX) {
@@ -87,10 +105,10 @@ void MotorControl::set_throttle(uint16_t value) {
 	_pw_b = percentValue * _THROTTLE_PW_RANGE + _THROTTLE_PW_CENTER;
 
 	// The limits of this particular servo on this particular bot:
-	if (_pw_b < _THROTTLE_PW_MIN) {
-		_pw_b = _THROTTLE_PW_MIN;
-	} else if (_pw_b > _THROTTLE_PW_MAX) {
-		_pw_b = _THROTTLE_PW_MAX;
+	if (_pw_b < THROTTLE_PW_MIN) {
+		_pw_b = THROTTLE_PW_MIN;
+	} else if (_pw_b > THROTTLE_PW_MAX) {
+		_pw_b = THROTTLE_PW_MAX;
 	}
 
 	_motor_B->pulsewidth(_pw_b);

@@ -13,6 +13,14 @@
 #define _STEERING_PW_CENTER 0.001664
 #define _STEERING_PW_RANGE 0.000350
 
+// Throttle PWM center, range, max, min can be overwritten here:
+//#define _THROTTLE_PW_CENTER 0.001515  // <--default
+//#define _THROTTLE_PW_RANGE 0.000400  // <-- default
+//#define _THROTTLE_PW_MAX .001915  // <-- default
+#define _THROTTLE_PW_MAX .001735
+//#define _THROTTLE_PW_MIN 0.001115  // <-- default
+
+
 #define _TWO_SHAFT_ENCODERS
 
 
