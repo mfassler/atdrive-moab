@@ -16,6 +16,7 @@ public:
 	uint16_t auto_ch1 = 1024;
 	uint16_t auto_ch2 = 1024;
 
+	void setRelay(bool value);
 
 private:
 	UDPSocket *_rx_sock; // one, single thread for RX
@@ -24,7 +25,6 @@ private:
 	void main_worker();
 
 // External servos/switches:
-
 #ifdef USER_DIGITAL_OUT_0
 	DigitalOut *user_dout_0;
 #endif // USER_DIGITAL_OUT_0

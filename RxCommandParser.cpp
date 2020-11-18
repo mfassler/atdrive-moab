@@ -60,6 +60,16 @@ void RxCommandParser::Start() {
 }
 
 
+void RxCommandParser::setRelay(bool value) {
+#ifdef USER_DIGITAL_OUT_0
+	if (value) {
+		*user_dout_0 = 1;
+	} else {
+		*user_dout_0 = 0;
+	}
+#endif // USER_DIGITAL_OUT_0
+}
+
 
 void RxCommandParser::main_worker() {
 

@@ -131,6 +131,16 @@ void set_mode_manual() {
 	motorControl.set_steering(sbus_daemon.sbup.ch1);
 	motorControl.set_throttle(sbus_daemon.sbup.ch3);
 
+#ifdef USER_DIGITAL_OUT_0
+	if (sbus_daemon.sbup.ch6 < 688) {
+		u_printf(" RELAY 1\n");
+		rxParser.setRelay(1);
+	} else {
+		u_printf(" RELAY 0\n");
+		rxParser.setRelay(0);
+	}
+#endif // USER_DIGITAL_OUT_0
+
 	// Convient info for LocationServices, on the host PC:
 	imu_daemon.set_extra_info(sbus_daemon.sbup.ch1, sbus_daemon.sbup.ch3, moab_state);
 }
