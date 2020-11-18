@@ -133,10 +133,8 @@ void set_mode_manual() {
 
 #ifdef USER_DIGITAL_OUT_0
 	if (sbus_daemon.sbup.ch6 < 688) {
-		u_printf(" RELAY 1\n");
 		rxParser.setRelay(1);
 	} else {
-		u_printf(" RELAY 0\n");
 		rxParser.setRelay(0);
 	}
 #endif // USER_DIGITAL_OUT_0
