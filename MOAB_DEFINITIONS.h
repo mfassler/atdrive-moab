@@ -33,4 +33,14 @@
 #define UDP_PORT_PUSHBUTTON 31345
 
 
+enum Moab_State_t {
+	NoSignal = 0,
+	Stop = 1,  // stop with brakes
+	Manual = 2,
+	Auto = 3,
+	Stop_no_brakes = 4, // stop without brakes
+	Auto_no_autopilot = 5  // Auto, but timeout for message from auto-pilot
+}; 
+
+
 #endif // __MOAB_DEFINITIONS_H

@@ -18,13 +18,14 @@
 #include "EVENT_FLAGS.hpp"
 #include "MOAB_DEFINITIONS.h"
 
-//#include "daemons/Radio169_daemon.hpp"
+#include "daemons/Radio169_daemon.hpp"
 #include "daemons/SBus_daemon.hpp"
 #include "daemons/IMU_daemon.hpp"
 #include "daemons/GPS_daemon.hpp"
 //#include "daemons/RTCM3_daemon.hpp"
 #include "daemons/PushButton_daemon.hpp"
 
+#include "SbusParser.hpp"
 #include "MotorControl.hpp"
 #include "RxCommandParser.hpp"
 
@@ -53,7 +54,7 @@ DigitalOut myledB(LED2, 0);
 // Background I/O processes:
 //  (minimal inter-dependence; mostly independent of anything else)
 SBus_daemon sbus_daemon(PD_2, &tx_sock);
-//Radio169_daemon r169_daemon(NC, PD_6, &tx_sock);
+Radio169_daemon r169_daemon(NC, PD_6, &tx_sock);
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
@@ -84,98 +85,142 @@ void u_printf(const char *fmt, ...) {
 
 
 
-enum Moab_State_t {
-	NoSignal = 0,
-	Stop = 1,
-	Manual = 2,
-	Auto = 3
-} moab_state = Stop;
+enum Moab_State_t moab_state = Stop;
 
 
-void set_mode_sbus_failsafe() {
-	// Radio contact with the transmitter has timed-out, so stop the motors
-	moab_state = NoSignal;
+void radio_callback(bool __NOT_USED_ANYMORE__DELETEME_) {
 
-	myledR = 0;
-	myledG = 0;
-	myledB = 0;
+	uint16_t sb_steering = 1024;
+	uint16_t sb_throttle = 1024;
 
-	motorControl.set_steering(1024);
-	motorControl.set_throttle(352);
+	enum Rc_controller_source_t {
+		RC_NONE,
+		RC_SBUS,
+		RC_R169
+	} rc_radio_source = RC_NONE;
+
+	// If both sbus and r169 have timeout, then set state to no_signal
+	// if sbus has timeout, but r169 has signal, then use r169
+	// if sbus has signal, then use sbus
+
+	// From S.Bus, there are 3 modes:
+	//   Stop
+	//   Manual
+	//   Auto
+
+	// From r169, there are 4 modes:
+	//   Stop
+	//   Manual
+	//   Auto
+	//   Stop_no_brakes
+
+	// If mode is "Auto", but there's a timeout from the autopilot,
+	//  then the mode is Auto_no_autopilot (same as "Stop")
+
+	if (sbus_daemon.timeout == false) {  // Trust the S.Bus
+
+		rc_radio_source = RC_SBUS;
+		moab_state = sbus_daemon.requested_moab_state;
+		sb_steering = sbus_daemon.sbup.ch1;
+		sb_throttle = sbus_daemon.sbup.ch3;
+
+	} else if (r169_daemon.timeout == false) {  // Trust the r169
+
+		rc_radio_source = RC_R169;
+		moab_state = r169_daemon.requested_moab_state;
+		sb_steering = r169_daemon.sb_steering;
+		sb_throttle = r169_daemon.sb_throttle;
+
+	} else {
+
+		rc_radio_source = RC_NONE;
+		moab_state = NoSignal;
+	}
+
+	if (moab_state == Auto && rxParser.timeout) {
+		moab_state = Auto_no_autopilot;
+	}
+
+
+	switch (moab_state) {
+	case NoSignal:
+		myledR = 0;
+		myledG = 0;
+		myledB = 0;
+
+		sb_steering = 1024;
+		sb_throttle = 352;
+		break;
+
+	case Stop: // with brakes
+		myledR = 1;
+		myledG = 0;
+		myledB = 0;
+
+		sb_throttle = 352;
+		break;
+
+	case Manual:
+		myledR = 0;
+		myledG = 1;
+		myledB = 0;
+
+		break;
+
+	case Auto:
+		myledR = 0;
+		myledG = 0;
+		myledB = 1;
+
+		sb_steering = rxParser.auto_ch1;
+		sb_throttle = rxParser.auto_ch2;
+		break;
+
+	case Stop_no_brakes:
+		myledR = 1;
+		myledG = 0;
+		myledB = 0;
+
+		sb_throttle = 1024;
+		break;
+
+	case Auto_no_autopilot:
+		myledR = 0;
+		myledG = 0;
+		myledB = 1;
+
+		sb_steering = 1024;
+		sb_throttle = 1024;
+		break;
+	}
+
+	motorControl.set_steering(sb_steering);
+	motorControl.set_throttle(sb_throttle);
 
 	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(1024, 352, moab_state);
-}
+	imu_daemon.set_extra_info(sb_steering, sb_throttle, moab_state);
 
-void set_mode_stop() {
-	moab_state = Stop;
-
-	myledR = 1;
-	myledG = 0;
-	myledB = 0;
-
-	motorControl.set_steering(sbus_daemon.sbup.ch1);
-	motorControl.set_throttle(352);
-
-	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(1024, 352, moab_state);
-}
-
-void set_mode_manual() {
-	moab_state = Manual;
-
-	myledR = 0;
-	myledG = 1;
-	myledB = 0;
-
-	motorControl.set_steering(sbus_daemon.sbup.ch1);
-	motorControl.set_throttle(sbus_daemon.sbup.ch3);
 
 #ifdef USER_DIGITAL_OUT_0
-	if (sbus_daemon.sbup.ch6 < 688) {
-		rxParser.setRelay(1);
-	} else {
-		rxParser.setRelay(0);
+	if (moab_state == Manual) {
+		if (rc_radio_source == RC_SBUS) {
+			if (sbus_daemon.sbup.ch6 < 688) {
+				rxParser.setRelay(1);
+			} else {
+				rxParser.setRelay(0);
+			}
+
+		} else if (rc_radio_source == RC_R169) {
+			if (r169_daemon.controller_values.logitech) {
+				rxParser.setRelay(1);
+			} else {
+				rxParser.setRelay(0);
+			}
+		}
 	}
 #endif // USER_DIGITAL_OUT_0
 
-	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(sbus_daemon.sbup.ch1, sbus_daemon.sbup.ch3, moab_state);
 }
-
-void set_mode_auto() {
-	moab_state = Auto;
-
-	myledR = 0;
-	myledG = 0;
-	myledB = 1;
-
-	motorControl.set_steering(rxParser.auto_ch1);
-	motorControl.set_throttle(rxParser.auto_ch2);
-
-	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(rxParser.auto_ch1, rxParser.auto_ch2, moab_state);
-}
-
-
-
-void radio_callback(bool force_stop) {
-	if (force_stop) {
-		// radio disconnected or something...
-		u_printf("S.Bus timeout!\n");
-		set_mode_sbus_failsafe();
-	} else if (sbus_daemon.sbup.failsafe) {
-		u_printf("S.Bus failsafe!\n");
-		set_mode_sbus_failsafe();
-	} else if (sbus_daemon.sbup.ch5 < 688) {
-		set_mode_stop();
-	} else if (sbus_daemon.sbup.ch5 < 1360) {
-		set_mode_manual();
-	} else {
-		set_mode_auto();
-	}
-}
-
 
 
 
@@ -219,6 +264,8 @@ int main() {
 	printf("\r\n");
 	printf("   ##### This is AT-Drive Moab #####\r\n");
 
+	moab_state = Stop;
+
 	//  ######################################
 	//  #########################################
 	//  ###########################################
@@ -251,9 +298,8 @@ int main() {
 	// Background threads
 	sbus_daemon.attachCallback(&radio_callback);
 	sbus_daemon.Start();  // will start a separate thread
-	//r169_daemon.attachCallback(&radio_callback);
-	//r169_daemon.Start();  // will start a separate thread
-
+	r169_daemon.attachCallback(&radio_callback);
+	r169_daemon.Start();  // will start a separate thread
 
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread
@@ -289,7 +335,6 @@ int main() {
 		uint16_t sbus_b = motorControl.get_value_b();
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
-
 
 	}
 

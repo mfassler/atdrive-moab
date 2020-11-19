@@ -18,6 +18,8 @@ public:
 
 	void setRelay(bool value);
 
+	bool timeout;
+
 private:
 	UDPSocket *_rx_sock; // one, single thread for RX
 

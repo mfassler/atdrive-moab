@@ -23,6 +23,9 @@ public:
 
 	struct sbus_udp_payload sbup;
 
+	bool timeout;
+	enum Moab_State_t requested_moab_state;
+
 
 private:
 	UDPSocket *_sock;

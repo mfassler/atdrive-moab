@@ -46,6 +46,13 @@ struct controller_values_t {
 
 
 
+enum button_state_t {
+	no_press,
+	press
+};
+
+
+
 class Radio169_daemon {
 
 public:
@@ -55,7 +62,14 @@ public:
 
 	void attachCallback(Callback<void(bool)>);
 	struct controller_values_t controller_values;
+	bool timeout;
 
+	uint16_t sb_steering;
+	uint16_t sb_throttle;
+
+	enum Moab_State_t requested_moab_state;
+
+	void _stateful_stuff(void);
 
 private:
 	UDPSocket *_sock;
@@ -79,6 +93,13 @@ private:
 	char _ringBuf[_RING_BUFFER_SIZE169];
 	int _inputIDX = 0;
 	int _outputIDX = 0;
+
+	// Stop release must be held down for 2 seconds
+	enum button_state_t _stop_release_state = no_press;
+	uint64_t _stop_release_time = rtos::Kernel::get_ms_count();
+
+	// This is to de-bounce the blue "X" button:
+	enum button_state_t _blue_button_state = no_press;
 
 
 };

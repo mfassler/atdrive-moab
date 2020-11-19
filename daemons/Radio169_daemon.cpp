@@ -28,6 +28,11 @@ Radio169_daemon::Radio169_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
 	_sock = tx_sock;
 	_serport->attach(callback(this, &Radio169_daemon::_Serial_Rx_Interrupt));
 
+	_stop_release_time = rtos::Kernel::get_ms_count();
+
+	timeout = true;
+	requested_moab_state = Stop;
+
 }
 
 void Radio169_daemon::attachCallback(Callback<void(bool)>fp) {
@@ -88,9 +93,71 @@ void Radio169_daemon::_parse_vals() {
 	controller_values.rightjoy_lr = output_buffer[5] - 64;
 	controller_values.rightjoy_ud = output_buffer[6] - 64;
 
+	timeout = false;
+
+	// Fake SBus values, since Moab was originally built around S.Bus:
+	sb_steering = 1024 + (int) controller_values.rightjoy_lr * 10 * _SCALE_STEERING;
+
+	if (controller_values.leftjoy_ud > 0) {
+		sb_throttle = 1024 + (int) controller_values.leftjoy_ud * 10 * _SCALE_THROTTLE;
+	} else {
+		sb_throttle = 1024 + (int) controller_values.leftjoy_ud * 10 * _SCALE_BRAKE;
+	}
+
+	_stateful_stuff();
 	_callback(false);
 }
 
+
+void Radio169_daemon::_stateful_stuff(void) {
+
+
+	if (controller_values.X) {
+		if (_blue_button_state == no_press) {
+			_blue_button_state = press;
+			if (requested_moab_state == Manual) {
+				requested_moab_state = Auto;
+				u_printf("User toggle:  Manual --> Auto\n");
+			} else if (requested_moab_state == Auto) {
+				requested_moab_state = Manual;
+				u_printf("User toggle:  Auto --> Manual\n");
+			}
+		}
+	} else {
+		if (_blue_button_state == press) {
+			_blue_button_state = no_press;
+		}
+	}
+
+
+	if (controller_values.LB) {  // LB: stop with full brakes
+
+		requested_moab_state = Stop;
+		u_printf("USER EMERGENCY STOP\n");
+
+	} else if (controller_values.RB) { // RB: stop with neutral brake/throttle
+
+		requested_moab_state = Stop_no_brakes;
+		u_printf("User stop\n");
+
+	} else if (controller_values.LT && controller_values.RT) {
+		// LT and RT must be held down for 2 seconds to release emergency stop
+		if (_stop_release_state == no_press) {
+
+			_stop_release_time = rtos::Kernel::get_ms_count();
+			_stop_release_state = press;
+
+		} else {
+			if (rtos::Kernel::get_ms_count() - _stop_release_time > 2000) {
+				requested_moab_state = Manual;
+				u_printf("User emergency stop release\n");
+			}
+		}
+
+	} else {
+		_stop_release_state = no_press;
+	}
+}
 
 
 void Radio169_daemon::main_worker() {
@@ -98,10 +165,11 @@ void Radio169_daemon::main_worker() {
 	uint32_t flags_read;
 
 	while (true) {
-		flags_read = _event_flags.wait_any(_EVENT_FLAG_RADIO169, 250);
+		flags_read = _event_flags.wait_any(_EVENT_FLAG_RADIO169, 350);
 
 		if (flags_read & osFlagsError) {
 
+			timeout = true;
 			_callback(true);
 			uint8_t plen_hibyte = _ringBuf[  mod(_outputIDX+1, _RING_BUFFER_SIZE169) ];
 			uint8_t plen_lobyte = _ringBuf[  mod(_outputIDX+2, _RING_BUFFER_SIZE169) ];

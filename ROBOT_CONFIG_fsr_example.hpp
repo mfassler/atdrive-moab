@@ -20,6 +20,10 @@
 #define _THROTTLE_PW_MAX .001735
 //#define _THROTTLE_PW_MIN 0.001115  // <-- default
 
+#define _SCALE_STEERING 1.0
+#define _SCALE_THROTTLE 1.0
+#define _SCALE_BRAKE 1.0
+
 
 #define _TWO_SHAFT_ENCODERS
 

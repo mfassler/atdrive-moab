@@ -13,6 +13,9 @@ SBus_daemon::SBus_daemon(PinName rx, UDPSocket *tx_sock) {
 
 	_sock = tx_sock;
 	_serport->attach(callback(this, &SBus_daemon::_serial_rx_interrupt));
+
+	timeout = true;
+	requested_moab_state = NoSignal;
 }
 
 
@@ -35,6 +38,17 @@ void SBus_daemon::_serial_rx_interrupt() {
 		int status = _parser->rx_char(c);
 
 		if (status == 1) {
+
+			if (sbup.failsafe) {
+				requested_moab_state = NoSignal;
+			} else if (sbup.ch5 < 688) {
+				requested_moab_state = Stop;
+			} else if (sbup.ch5 < 1360) {
+				requested_moab_state = Manual;
+			} else {
+				requested_moab_state = Auto;
+			}
+
 			_event_flags.set(_EVENT_FLAG_SBUS);
 		}
 	}
@@ -48,16 +62,18 @@ void SBus_daemon::main_worker() {
 		flags_read = _event_flags.wait_any(_EVENT_FLAG_SBUS, 100);
 
 		if (flags_read & osFlagsError) {
+			timeout = true;
 			_callback(true);
 		} else {
+			timeout = false;
 			_callback(false);
-		}
-		int retval = _sock->sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
+			int retval = _sock->sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
 				(char *) &sbup, sizeof(struct sbus_udp_payload));
 
-		//if (retval < 0 && NETWORK_IS_UP) {
-		//	printf("UDP socket error in sbus_reTx_worker\r\n");
-		//}
+			//if (retval < 0 && NETWORK_IS_UP) {
+			//	printf("UDP socket error in sbus_reTx_worker\r\n");
+			//}
+		}
 	}
 }
 
