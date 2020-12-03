@@ -148,7 +148,7 @@ void Radio169_daemon::_stateful_stuff(void) {
 			_stop_release_state = press;
 
 		} else {
-			if (rtos::Kernel::get_ms_count() - _stop_release_time > 2000) {
+			if (rtos::Kernel::get_ms_count() - _stop_release_time > 100) {
 				requested_moab_state = Manual;
 				u_printf("User emergency stop release\n");
 			}
