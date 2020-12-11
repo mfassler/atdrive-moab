@@ -60,7 +60,7 @@ public:
 
 	void Start();
 
-	void attachCallback(Callback<void(bool)>);
+	void attachCallback(Callback<void()>);
 	struct controller_values_t controller_values;
 	bool timeout;
 
@@ -79,7 +79,7 @@ private:
 
 	Thread main_thread;
 
-	Callback<void(bool)> _callback;
+	Callback<void()> _callback;
 
 	void main_worker(void);
 	void _Serial_Rx_Interrupt(void);

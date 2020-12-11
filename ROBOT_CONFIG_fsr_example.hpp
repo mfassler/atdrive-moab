@@ -30,6 +30,8 @@
 // On/Off digital out:
 #define USER_DIGITAL_OUT_0 PF_15
 
+#define _USE_RADIO169
+
 
 // PWM Outputs
 // -----------

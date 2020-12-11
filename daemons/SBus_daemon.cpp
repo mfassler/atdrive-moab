@@ -19,7 +19,7 @@ SBus_daemon::SBus_daemon(PinName rx, UDPSocket *tx_sock) {
 }
 
 
-void SBus_daemon::attachCallback(Callback<void(bool)>fp) {
+void SBus_daemon::attachCallback(Callback<void()>fp) {
 	_callback = fp;
 }
 
@@ -63,10 +63,11 @@ void SBus_daemon::main_worker() {
 
 		if (flags_read & osFlagsError) {
 			timeout = true;
-			_callback(true);
+			_callback();
+			//u_printf("S.Bus timeout!\n");
 		} else {
 			timeout = false;
-			_callback(false);
+			_callback();
 			int retval = _sock->sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
 				(char *) &sbup, sizeof(struct sbus_udp_payload));
 

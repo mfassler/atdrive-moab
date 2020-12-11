@@ -54,7 +54,11 @@ DigitalOut myledB(LED2, 0);
 // Background I/O processes:
 //  (minimal inter-dependence; mostly independent of anything else)
 SBus_daemon sbus_daemon(PD_2, &tx_sock);
+
+#ifdef _USE_RADIO169
 Radio169_daemon r169_daemon(NC, PD_6, &tx_sock);
+#endif // _USE_RADIO169
+
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
 //RTCM3_daemon rtcm3_daemon(PD_5, PD_6, &tx_sock);
@@ -88,7 +92,7 @@ void u_printf(const char *fmt, ...) {
 enum Moab_State_t moab_state = Stop;
 
 
-void radio_callback(bool __NOT_USED_ANYMORE__DELETEME_) {
+void radio_callback() {
 
 	uint16_t sb_steering = 1024;
 	uint16_t sb_throttle = 1024;
@@ -124,12 +128,15 @@ void radio_callback(bool __NOT_USED_ANYMORE__DELETEME_) {
 		sb_steering = sbus_daemon.sbup.ch1;
 		sb_throttle = sbus_daemon.sbup.ch3;
 
+
+#ifdef _USE_RADIO169
 	} else if (r169_daemon.timeout == false) {  // Trust the r169
 
 		rc_radio_source = RC_R169;
 		moab_state = r169_daemon.requested_moab_state;
 		sb_steering = r169_daemon.sb_steering;
 		sb_throttle = r169_daemon.sb_throttle;
+#endif // _USE_RADIO169
 
 	} else {
 
@@ -210,12 +217,14 @@ void radio_callback(bool __NOT_USED_ANYMORE__DELETEME_) {
 				rxParser.setRelay(0);
 			}
 
+#ifdef _USE_RADIO169
 		} else if (rc_radio_source == RC_R169) {
 			if (r169_daemon.controller_values.logitech) {
 				rxParser.setRelay(1);
 			} else {
 				rxParser.setRelay(0);
 			}
+#endif // _USE_RADIO169
 		}
 	}
 #endif // USER_DIGITAL_OUT_0
@@ -298,8 +307,11 @@ int main() {
 	// Background threads
 	sbus_daemon.attachCallback(&radio_callback);
 	sbus_daemon.Start();  // will start a separate thread
+
+#ifdef _USE_RADIO169
 	r169_daemon.attachCallback(&radio_callback);
 	r169_daemon.Start();  // will start a separate thread
+#endif // _USE_RADIO169
 
 	imu_daemon.Start();  // will start a separate thread
 	gps_daemon.Start();  // will start a separate thread

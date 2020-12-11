@@ -35,7 +35,7 @@ Radio169_daemon::Radio169_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
 
 }
 
-void Radio169_daemon::attachCallback(Callback<void(bool)>fp) {
+void Radio169_daemon::attachCallback(Callback<void()>fp) {
 	_callback = fp;
 }
 
@@ -105,7 +105,7 @@ void Radio169_daemon::_parse_vals() {
 	}
 
 	_stateful_stuff();
-	_callback(false);
+	_callback();
 }
 
 
@@ -170,7 +170,7 @@ void Radio169_daemon::main_worker() {
 		if (flags_read & osFlagsError) {
 
 			timeout = true;
-			_callback(true);
+			_callback();
 			uint8_t plen_hibyte = _ringBuf[  mod(_outputIDX+1, _RING_BUFFER_SIZE169) ];
 			uint8_t plen_lobyte = _ringBuf[  mod(_outputIDX+2, _RING_BUFFER_SIZE169) ];
 			int bufLen = mod(_inputIDX-_outputIDX, _RING_BUFFER_SIZE169);

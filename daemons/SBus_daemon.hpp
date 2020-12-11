@@ -19,7 +19,7 @@ public:
 
 	void Start();
 
-	void attachCallback(Callback<void(bool)>);
+	void attachCallback(Callback<void()>);
 
 	struct sbus_udp_payload sbup;
 
@@ -33,7 +33,7 @@ private:
 	EventFlags _event_flags;
 	Thread main_thread;
 	SbusParser *_parser;
-	Callback<void(bool)> _callback;
+	Callback<void()> _callback;
 	void main_worker(void);
 	void _serial_rx_interrupt(void);
 
