@@ -100,7 +100,7 @@ private:
 
 	// This is to de-bounce buttons:
 	//enum button_state_t _blue_button_state = no_press;
-	enum button_state_t _red_button_state = no_press;
+	//enum button_state_t _red_button_state = no_press;
 
 
 };
