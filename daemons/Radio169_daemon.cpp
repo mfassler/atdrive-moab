@@ -112,36 +112,50 @@ void Radio169_daemon::_parse_vals() {
 void Radio169_daemon::_stateful_stuff(void) {
 
 
-	if (controller_values.X) {
-		if (_blue_button_state == no_press) {
-			_blue_button_state = press;
-			if (requested_moab_state == Manual) {
-				requested_moab_state = Auto;
-				u_printf("User toggle:  Manual --> Auto\n");
-			} else if (requested_moab_state == Auto) {
-				requested_moab_state = Manual;
-				u_printf("User toggle:  Auto --> Manual\n");
-			}
+	// Push-button
+	if (controller_values.B) {
+		if (_red_button_state == no_press) {
+			_red_button_state = press;
+
+			// This should behave identical to the PushButton daemon:
+			uint64_t ts_ms = rtos::Kernel::get_ms_count();
+			int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_PUSHBUTTON,
+				&ts_ms, sizeof(ts_ms));
+
+			u_printf("r169: user push-button X\n");
 		}
 	} else {
-		if (_blue_button_state == press) {
-			_blue_button_state = no_press;
-		}
+		_red_button_state = no_press;
 	}
 
 
-	if (controller_values.LB) {  // LB: stop with full brakes
+	if (controller_values.A) {  // Auto PGM 1
+
+		requested_moab_state = Auto;
+		u_printf("User auto A\n");
+
+	} else if (controller_values.X) {  // Auto PGM 2
+
+		requested_moab_state = Auto;
+		u_printf("User auto X\n");
+
+	} else if (controller_values.Y) {  // Auto PGM 3
+
+		requested_moab_state = Auto;
+		u_printf("User auto X\n");
+
+	} else if (controller_values.LB) {  // LB: stop with full brakes
 
 		requested_moab_state = Stop;
 		u_printf("USER EMERGENCY STOP\n");
 
-	} else if (controller_values.RB) { // RB: stop with neutral brake/throttle
+	} else if (controller_values.RB) { // RB: Manual
 
-		requested_moab_state = Stop_no_brakes;
+		requested_moab_state = Manual;
 		u_printf("User stop\n");
 
 	} else if (controller_values.LT && controller_values.RT) {
-		// LT and RT must be held down for 2 seconds to release emergency stop
+		// LT and RT must be held down for 0.1 seconds to release emergency stop
 		if (_stop_release_state == no_press) {
 
 			_stop_release_time = rtos::Kernel::get_ms_count();
@@ -149,8 +163,8 @@ void Radio169_daemon::_stateful_stuff(void) {
 
 		} else {
 			if (rtos::Kernel::get_ms_count() - _stop_release_time > 100) {
-				requested_moab_state = Manual;
-				u_printf("User emergency stop release\n");
+				requested_moab_state = Auto;
+				u_printf("Pause Cancel\n");
 			}
 		}
 

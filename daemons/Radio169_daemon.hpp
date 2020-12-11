@@ -98,8 +98,9 @@ private:
 	enum button_state_t _stop_release_state = no_press;
 	uint64_t _stop_release_time = rtos::Kernel::get_ms_count();
 
-	// This is to de-bounce the blue "X" button:
-	enum button_state_t _blue_button_state = no_press;
+	// This is to de-bounce buttons:
+	//enum button_state_t _blue_button_state = no_press;
+	enum button_state_t _red_button_state = no_press;
 
 
 };
