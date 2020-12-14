@@ -37,7 +37,7 @@ struct multi_data {
 	uint16_t sbus_a;
 	uint16_t sbus_b;
 	uint8_t moab_mode;
-	uint8_t _padding3;  // 64-bit boundary
+	uint8_t rc_radio_source;
 	uint16_t adc0;
 
 	// Everything ABOVE here is the official, "version 1" of this protocol
@@ -64,7 +64,7 @@ public:
 
 	void Start();
 
-	void set_extra_info(uint16_t, uint16_t, uint8_t);
+	void set_extra_info(uint16_t, uint16_t, uint8_t, uint8_t);
 
 private:
 

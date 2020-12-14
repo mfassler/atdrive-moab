@@ -48,13 +48,18 @@ void IMU_daemon::Start() {
 }
 
 
-void IMU_daemon::set_extra_info(uint16_t sbus_steering, uint16_t sbus_throttle, uint8_t moab_mode) {
+void IMU_daemon::set_extra_info(
+		uint16_t sbus_steering,
+		uint16_t sbus_throttle,
+		uint8_t moab_mode,
+		uint8_t rc_radio_source) {
 
 	// This is just convenient info to include here...  not really IMU-related per se...
 
 	_mData.sbus_a = sbus_steering;
 	_mData.sbus_b = sbus_throttle;
 	_mData.moab_mode = moab_mode;
+	_mData.rc_radio_source = rc_radio_source;
 }
 
 

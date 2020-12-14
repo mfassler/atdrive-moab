@@ -205,7 +205,7 @@ void radio_callback() {
 	motorControl.set_throttle(sb_throttle);
 
 	// Convient info for LocationServices, on the host PC:
-	imu_daemon.set_extra_info(sb_steering, sb_throttle, moab_state);
+	imu_daemon.set_extra_info(sb_steering, sb_throttle, moab_state, rc_radio_source);
 
 
 #ifdef USER_DIGITAL_OUT_0
