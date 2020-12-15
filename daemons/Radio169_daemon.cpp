@@ -124,7 +124,7 @@ void Radio169_daemon::_stateful_stuff(void) {
 	} else if (controller_values.Y) {  // Auto PGM 3
 
 		requested_moab_state = Auto;
-		u_printf("User auto X\n");
+		u_printf("User auto Y\n");
 
 	} else if (controller_values.LB) {  // LB: stop with full brakes
 
