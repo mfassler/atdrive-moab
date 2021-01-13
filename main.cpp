@@ -201,8 +201,7 @@ void radio_callback() {
 		break;
 	}
 
-	motorControl.set_steering(sb_steering);
-	motorControl.set_throttle(sb_throttle);
+	motorControl.set_steering_and_throttle(sb_steering, sb_throttle);
 
 	// Convient info for LocationServices, on the host PC:
 	imu_daemon.set_extra_info(sb_steering, sb_throttle, moab_state, rc_radio_source);
@@ -340,11 +339,11 @@ int main() {
 		u_printf("heartbeat: %d\n", ct);
 
 		// Report motor values (for convience when setting trim)
-		uint16_t sbus_a = motorControl.get_value_a();
+		uint16_t sbus_a = motorControl.get_steer_value();
 		float pw_a = motorControl.get_pw_a();
 		u_printf("steering: %d %f\n", sbus_a, pw_a);
 
-		uint16_t sbus_b = motorControl.get_value_b();
+		uint16_t sbus_b = motorControl.get_throt_value();
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
 
