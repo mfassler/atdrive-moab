@@ -80,7 +80,32 @@ void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_t
 	float steer_percentValue = ((float) sb_steering - 1024.0) / 672.0;  // -1 left, +1 right
 	float throt_percentValue = ((float) sb_throttle - 1024.0) / 672.0;  // -1 backwards, +1 forward
 
+#ifdef USE_SKIDMODE
+	float leftWheel = throt_percentValue + steer_percentValue;
+	float rightWheel = throt_percentValue - steer_percentValue;
+
+	if (leftWheel > 1.0) {
+		leftWheel = 1.0;
+	} else if (leftWheel < -1.0) {
+		leftWheel = -1.0;
+	}
+
+	if (rightWheel > 1.0) {
+		rightWheel = 1.0;
+	} else if (rightWheel < -1.0) {
+		rightWheel = -1.0;
+	}
+
+	_pw_a = leftWheel * _LEFT_PW_RANGE + _LEFT_PW_CENTER;
+	_pw_b = rightWheel * _RIGHT_PW_RANGE + _RIGHT_PW_CENTER;
+
+#else // USE_SKIDMODE
+
 	_pw_a = steer_percentValue * _STEERING_PW_RANGE + _STEERING_PW_CENTER;
+	_pw_b = throt_percentValue * _THROTTLE_PW_RANGE + _THROTTLE_PW_CENTER;
+
+#endif // USE_SKIDMODE
+
 
 	// The limits of this particular servo on this particular bot:
 	if (_pw_a < _STEERING_PW_MIN) {
@@ -89,7 +114,6 @@ void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_t
 		_pw_a = _STEERING_PW_MAX;
 	}
 
-	_pw_b = throt_percentValue * _THROTTLE_PW_RANGE + _THROTTLE_PW_CENTER;
 
 	// The limits of this particular servo on this particular bot:
 	if (_pw_b < THROTTLE_PW_MIN) {

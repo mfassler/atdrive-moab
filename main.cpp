@@ -156,7 +156,11 @@ void radio_callback() {
 		myledB = 0;
 
 		sb_steering = 1024;
+#ifdef USE_SKIDMODE
+		sb_throttle = 1024;
+#else // USE_SKIDMODE
 		sb_throttle = 352;
+#endif // USE_SKIDMODE
 		break;
 
 	case Stop: // with brakes
@@ -164,7 +168,12 @@ void radio_callback() {
 		myledG = 0;
 		myledB = 0;
 
+#ifdef USE_SKIDMODE
+		sb_steering = 1024;
+		sb_throttle = 1024;
+#else // USE_SKIDMODE
 		sb_throttle = 352;
+#endif // USE_SKIDMODE
 		break;
 
 	case Manual:
