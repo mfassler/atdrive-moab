@@ -27,6 +27,7 @@
 
 #include "SbusParser.hpp"
 #include "MotorControl.hpp"
+#include "XWheels.hpp"
 #include "RxCommandParser.hpp"
 
 EventFlags event_flags;
@@ -67,7 +68,11 @@ PushButton_daemon pushButton_daemon(PE_9, &tx_sock);
 RxCommandParser rxParser(&net);
 
 // Motors:
+#ifdef USE_XWHEELS
+XWheels drive(PD_1, PD_0);
+#else // USE_XWHEELS
 MotorControl motorControl(PD_14, PD_15);
+#endif // USE_XWHEELS
 
 
 void u_printf(const char *fmt, ...) {
@@ -156,11 +161,13 @@ void radio_callback() {
 		myledB = 0;
 
 		sb_steering = 1024;
-#ifdef USE_SKIDMODE
+#ifdef USE_XWHEELS
 		sb_throttle = 1024;
-#else // USE_SKIDMODE
+#elif USE_SKIDMODE
+		sb_throttle = 1024;
+#else
 		sb_throttle = 352;
-#endif // USE_SKIDMODE
+#endif
 		break;
 
 	case Stop: // with brakes
@@ -168,12 +175,15 @@ void radio_callback() {
 		myledG = 0;
 		myledB = 0;
 
-#ifdef USE_SKIDMODE
+#ifdef USE_XWHEELS
 		sb_steering = 1024;
 		sb_throttle = 1024;
-#else // USE_SKIDMODE
+#elif USE_SKIDMODE
+		sb_steering = 1024;
+		sb_throttle = 1024;
+#else
 		sb_throttle = 352;
-#endif // USE_SKIDMODE
+#endif
 		break;
 
 	case Manual:
@@ -210,7 +220,11 @@ void radio_callback() {
 		break;
 	}
 
+#ifdef USE_XWHEELS
+	drive.set_steering_and_throttle(sb_steering, sb_throttle);
+#else // USE_XWHEELS
 	motorControl.set_steering_and_throttle(sb_steering, sb_throttle);
+#endif // USE_XWHEELS
 
 	// Convient info for LocationServices, on the host PC:
 	imu_daemon.set_extra_info(sb_steering, sb_throttle, moab_state, rc_radio_source);
@@ -326,6 +340,9 @@ int main() {
 	//rtcm3_daemon.Start();  // will start a separate thread
 	pushButton_daemon.Start();  // will start a separate thread
 
+#ifdef USE_XWHEELS
+	drive.Start();
+#endif // USE_XWHEELS
 
 	hb_led.period(0.02);
 	hb_led.write(0.0);
@@ -346,7 +363,7 @@ int main() {
 		}
 
 		u_printf("heartbeat: %d\n", ct);
-
+#ifndef USE_XWHEELS
 		// Report motor values (for convience when setting trim)
 		uint16_t sbus_a = motorControl.get_steer_value();
 		float pw_a = motorControl.get_pw_a();
@@ -355,7 +372,7 @@ int main() {
 		uint16_t sbus_b = motorControl.get_throt_value();
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
-
+#endif // USE_XWHEELS
 	}
 
 	// Close the socket and bring down the network interface
