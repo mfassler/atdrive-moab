@@ -68,7 +68,7 @@ void SBus_daemon::main_worker() {
 		} else {
 			timeout = false;
 			_callback();
-			int retval = _sock->sendto(_AUTOPILOT_IP_ADDRESS, UDP_PORT_SBUS,
+			int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_SBUS,
 				(char *) &sbup, sizeof(struct sbus_udp_payload));
 
 			//if (retval < 0 && NETWORK_IS_UP) {
