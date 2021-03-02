@@ -39,7 +39,8 @@ enum Moab_State_t {
 	Manual = 2,
 	Auto = 3,
 	Stop_no_brakes = 4, // stop without brakes
-	Auto_no_autopilot = 5  // Auto, but timeout for message from auto-pilot
+	Auto_no_autopilot = 5,  // Auto, but timeout for message from auto-pilot
+	External_safety = 6  // External switch to disable the auto-pilot
 }; 
 
 

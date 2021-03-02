@@ -46,6 +46,10 @@ DigitalOut myledR(LED3, 0);
 DigitalOut myledG(LED1, 0);
 DigitalOut myledB(LED2, 0);
 
+#ifdef USE_AUTOPILOT_OK_SWITCH
+// External switch to enable the auto-pilot (but leave everything else alone):
+DigitalIn autoPilotOk(PG_9, PullUp);
+#endif // USE_AUTOPILOT_OK_SWITCH
 
 
 // *** NOTE: By default, mbed-os only allows for 4 sockets, so
@@ -149,6 +153,12 @@ void radio_callback() {
 		moab_state = NoSignal;
 	}
 
+#ifdef USE_AUTOPILOT_OK_SWITCH
+	if (moab_state == Auto && autoPilotOk.read()) {
+		moab_state = External_safety;
+	}
+#endif // USE_AUTOPILOT_OK_SWITCH
+
 	if (moab_state == Auto && rxParser.timeout) {
 		moab_state = Auto_no_autopilot;
 	}
@@ -211,6 +221,7 @@ void radio_callback() {
 		break;
 
 	case Auto_no_autopilot:
+	case External_safety:
 		myledR = 0;
 		myledG = 0;
 		myledB = 1;
@@ -373,6 +384,13 @@ int main() {
 		float pw_b = motorControl.get_pw_b();
 		u_printf("throttle: %d %f\n", sbus_b, pw_b);
 #endif // USE_XWHEELS
+
+#ifdef USE_AUTOPILOT_OK_SWITCH
+		if (autoPilotOk.read()) {
+			u_printf("Autopilot BLOCKED by PG_9\n\r");
+		}
+#endif // USE_AUTOPILOT_OK_SWITCH
+
 	}
 
 	// Close the socket and bring down the network interface
