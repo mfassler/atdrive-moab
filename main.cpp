@@ -48,7 +48,8 @@ DigitalOut myledB(LED2, 0);
 
 #ifdef USE_AUTOPILOT_OK_SWITCH
 // External switch to enable the auto-pilot (but leave everything else alone):
-DigitalIn autoPilotOk(PG_9, PullUp);
+DigitalIn autoPilotOk(PG_9, PullUp); // Active low
+bool AUTOPILOT_OK = false;
 #endif // USE_AUTOPILOT_OK_SWITCH
 
 
@@ -155,6 +156,10 @@ void radio_callback() {
 
 #ifdef USE_AUTOPILOT_OK_SWITCH
 	if (moab_state == Auto && autoPilotOk.read()) {
+		AUTOPILOT_OK = false;
+	}
+
+	if (moab_state == Auto && !AUTOPILOT_OK) {
 		moab_state = External_safety;
 	}
 #endif // USE_AUTOPILOT_OK_SWITCH
@@ -200,6 +205,13 @@ void radio_callback() {
 		myledR = 0;
 		myledG = 1;
 		myledB = 0;
+
+#ifdef USE_AUTOPILOT_OK_SWITCH
+	if (!AUTOPILOT_OK && !autoPilotOk.read()) {
+		u_printf(" **** Reset Autopilot is OK\r\n");
+		AUTOPILOT_OK = true;
+	}
+#endif // USE_AUTOPILOT_OK_SWITCH
 
 		break;
 
