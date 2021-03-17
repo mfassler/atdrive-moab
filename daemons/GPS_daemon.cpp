@@ -22,11 +22,14 @@ int _gpsTxBufIdxFO = 0;
 
 
 GPS_daemon::GPS_daemon(PinName tx, PinName rx, EthernetInterface *net) {
-	_gps_in = new RawSerial(tx, rx, 115200);  //tx, then rx
+	_gps_in = new UnbufferedSerial(tx, rx, 115200);  //tx, then rx
 
 	_sock = new UDPSocket();
 	_sock->open(net);
 	_sock->bind(UDP_PORT_GPS_NMEA);
+
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_GPS_NMEA);
 
 	_gps_in->attach(callback(this, &GPS_daemon::_Gps_Rx_Interrupt));
 
@@ -55,8 +58,7 @@ void GPS_daemon::main_worker() {
 		} else {
 
 			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
-				int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_NMEA,
-						_gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
+				int retval = _sock->sendto(_destSockAddr, _gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
 
 				_gpsTxBufIdxFO++;
 				if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
@@ -79,28 +81,23 @@ void GPS_daemon::udp_rx_worker() {
 	 */
 
 	SocketAddress sockAddr;
-	char inputBuffer[512];
-	inputBuffer[511] = 0;
-
+	// RTCM3 max packet size is 1029
+	// ethernet MTU is about 1500
+	char inputBuffer[1500];
 
 	while (true) {
-		int n = _sock->recvfrom(&sockAddr, inputBuffer, 512);
-		int i;
-		for (i=0; i<n; ++i) {
-			_gps_in->putc(inputBuffer[i]);
-		}
-		//inputBuffer[i] = 0;
-		//u_printf(inputBuffer);
+		int n = _sock->recvfrom(&sockAddr, inputBuffer, 1500);
+		_gps_in->write(inputBuffer, n);
 	}
 }
 
 
 
 void GPS_daemon::_Gps_Rx_Interrupt() {
-	int c;
+	char c;
 	while (_gps_in->readable()) {
 
-		c = _gps_in->getc();
+		_gps_in->read(&c, 1);
 		_gpsRxBuf[_gpsRxBufLen] = c;
 		_gpsRxBufLen++;
 

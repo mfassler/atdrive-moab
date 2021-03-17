@@ -23,12 +23,15 @@ static int mod(int a, int b) {
 
 Radio169_daemon::Radio169_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
 	// TODO?  tx is not needed...
-	_serport = new RawSerial(tx, rx, 57600);
+	_serport = new UnbufferedSerial(tx, rx, 57600);
 
 	_sock = tx_sock;
 	_serport->attach(callback(this, &Radio169_daemon::_Serial_Rx_Interrupt));
 
 	_stop_release_time = rtos::Kernel::get_ms_count();
+
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_RADIO169);
 
 	timeout = true;
 	requested_moab_state = Stop;
@@ -49,8 +52,7 @@ void Radio169_daemon::_Serial_Rx_Interrupt() {
 
 	while (_serport->readable()) {
 
-		_ringBuf[_inputIDX] = _serport->getc();
-
+		_serport->read(&(_ringBuf[_inputIDX]), 1);
 		_inputIDX++;
 		if (_inputIDX >= _RING_BUFFER_SIZE169) {
 			_inputIDX = 0;
@@ -277,8 +279,7 @@ void Radio169_daemon::main_worker() {
 
 						_outputIDX = mod(_outputIDX+plen, _RING_BUFFER_SIZE169);
 
-						int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_RADIO169, 
-							output_buffer, 8);
+						int retval = _sock->sendto(_destSockAddr, output_buffer, 8);
 
 						_parse_vals();
 

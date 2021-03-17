@@ -7,11 +7,15 @@ extern void u_printf(const char *fmt, ...); // defined in main
 SBus_daemon::SBus_daemon(PinName rx, UDPSocket *tx_sock) {
 
 	// S.Bus is 100000Hz, 8E2, electrically inverted
-	_serport = new RawSerial(NC, rx, 100000);  // tx, then rx
+	_serport = new UnbufferedSerial(NC, rx, 100000);  // tx, then rx
 	_serport->format(8, SerialBase::Even, 2); // S.Bus is 8E2
 	_parser = new SbusParser(&sbup);
 
 	_sock = tx_sock;
+
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_SBUS);
+
 	_serport->attach(callback(this, &SBus_daemon::_serial_rx_interrupt));
 
 	timeout = true;
@@ -30,11 +34,11 @@ void SBus_daemon::Start() {
 
 
 void SBus_daemon::_serial_rx_interrupt() {
-	int c;
+	char c;
 
 	while (_serport->readable()) {
 
-		c = _serport->getc();
+		_serport->read(&c, 1);
 		int status = _parser->rx_char(c);
 
 		if (status == 1) {
@@ -68,8 +72,8 @@ void SBus_daemon::main_worker() {
 		} else {
 			timeout = false;
 			_callback();
-			int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_SBUS,
-				(char *) &sbup, sizeof(struct sbus_udp_payload));
+
+			int retval = _sock->sendto(_destSockAddr, (char *) &sbup, sizeof(struct sbus_udp_payload));
 
 			//if (retval < 0 && NETWORK_IS_UP) {
 			//	printf("UDP socket error in sbus_reTx_worker\r\n");

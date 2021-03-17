@@ -71,6 +71,7 @@ private:
 	struct multi_data _mData;
 
 	UDPSocket *_sock;
+	SocketAddress _destSockAddr;
 
 	Thread main_thread;
 

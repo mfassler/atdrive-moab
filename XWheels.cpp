@@ -32,8 +32,9 @@ void XWheels::main_worker() {
 
 	//u_printf("Trying to start XWheels...\n");
 
-	_uart = new RawSerial(_tx_pin, _rx_pin, 9600);
-	waitUntilFourZero();
+	_uart = new UnbufferedSerial(_tx_pin, _rx_pin, 9600);
+
+	//waitUntilFourZero();
 	ThisThread::sleep_for(219);
 	ESCHandShake();
 
@@ -72,10 +73,12 @@ void XWheels::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_thrott
 
 void XWheels::waitUntilFourZero() {
 	int count_zeros = 0;
+	char c;
+
 	if (_uart->readable() == true) {
 
 		while (true) {
-			char c = _uart->getc();
+			_uart->read(&c, 1);
 			if (c == 0) {
 				count_zeros++;
 			} else {
@@ -121,9 +124,8 @@ void XWheels::ESCHandShake() {
 
 
 	for (int k=1;k<=20;k++) {  // I guess we retry 20 times?
-		for (int i=0; i<17; ++i) {
-			_uart->putc(data_packet[i]);
-		}
+
+		_uart->write(data_packet, 17);
 
 		if (k==1) {
 			ThisThread::sleep_for(1);
@@ -207,9 +209,7 @@ void XWheels::send_motor_command() {
 	}
 	data_packet[8] = cksum;
 
-	for (int i=0; i<9; ++i) {
-		_uart->putc(data_packet[i]);
-	}
+	_uart->write(data_packet, 7);
 
 	// This delay was discovered from reverse-engineering:
 	ThisThread::sleep_for(23);

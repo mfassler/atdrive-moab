@@ -21,6 +21,8 @@ private:
 	InterruptIn *_button;
 	UDPSocket *_sock;
 
+	SocketAddress _destSockAddr;
+
 	volatile uint64_t _last_pgm_fall = 0;
 	volatile uint64_t _last_pgm_rise = 0;
 	uint64_t _last_pgm_fall_debounce = 0;

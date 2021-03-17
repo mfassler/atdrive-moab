@@ -9,11 +9,6 @@ dnf install arm-none-eabi-gcc-cs-c++
 # From this directory, you'll need to clone mbed-os:
 git clone https://github.com/ARMmbed/mbed-os.git
 
-# Moab doesn't build against mbed-os v6 or v5.15 yet:
-cd mbed-os
-git checkout mbed-os-5.14
-cd ../
-
 # Install the mbed CLI tools:
 pip3 install --user -r mbed-os/requirements.txt
 pip3 install --user mbed-cli
@@ -24,6 +19,10 @@ mbed export -m NUCLEO_F767ZI -i make_gcc_arm
 
 # See also:
 ###  https://os.mbed.com/docs/mbed-os/v5.12/tools/exporting.html
+
+
+# EDIT the mbed_config file to enable floats in printf:
+#  #define MBED_CONF_PLATFORM_MINIMAL_PRINTF_ENABLE_FLOATING_POINT               1
 
 
 # You'll need to link one of the config files, like so:

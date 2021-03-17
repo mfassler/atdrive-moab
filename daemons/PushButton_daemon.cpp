@@ -8,6 +8,9 @@ extern void u_printf(const char *fmt, ...);  // Defined in main()
 PushButton_daemon::PushButton_daemon(PinName _pin, UDPSocket *txsock) {
 	_button = new InterruptIn(_pin, PullUp);
 	_sock = txsock;
+
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_PUSHBUTTON);
 }
 
 
@@ -62,8 +65,7 @@ void PushButton_daemon::main_worker() {
 			if (!_pgm_value_debounce) {
 				if (ts_ms - _last_pgm_rise_debounce > 300) {
 
-					int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_PUSHBUTTON,
-						&ts_ms, sizeof(ts_ms));
+					int retval = _sock->sendto(_destSockAddr, &ts_ms, sizeof(ts_ms));
 
 					//if (retval < 0 && NETWORK_IS_UP) {
 					//	printf("UDP socket error in Check_Pgm_Button\r\n");

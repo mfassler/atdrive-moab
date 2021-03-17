@@ -26,9 +26,13 @@ int mod(int a, int b) {
 
 
 RTCM3_daemon::RTCM3_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
-	_serport = new RawSerial(tx, rx, 115200);
+	_serport = new UnbufferedSerial(tx, rx, 115200);
 
 	_sock = tx_sock;
+
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_GPS_RTCM3);
+
 	_serport->attach(callback(this, &RTCM3_daemon::_Serial_Rx_Interrupt));
 }
 
@@ -44,7 +48,7 @@ void RTCM3_daemon::_Serial_Rx_Interrupt() {
 
 	while (_serport->readable()) {
 
-		_ringBuf[_inputIDX] = _serport->getc();
+		_serport->read(&(_ringBuf[_inputIDX]), 1);
 
 		_inputIDX++;
 		if (_inputIDX >= _RING_BUFFER_SIZE) {
@@ -126,8 +130,7 @@ void RTCM3_daemon::main_worker() {
 					}
 					_outputIDX = mod(_outputIDX+plen, _RING_BUFFER_SIZE);
 
-					int retval = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_GPS_RTCM3, 
-						output_buffer, plen);
+					int retval = _sock->sendto(_destSockAddr, output_buffer, plen);
 				}
 			}
 		}

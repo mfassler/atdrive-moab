@@ -39,6 +39,9 @@ IMU_daemon::IMU_daemon(UDPSocket *tx_sock) {
 
 	_sock = tx_sock;
 
+	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	_destSockAddr.set_port(UDP_PORT_IMU);
+
 	adc0 = new AnalogIn(PA_3);
 }
 
@@ -120,8 +123,7 @@ void IMU_daemon::main_worker() {
 				_mData.shaft_pps = shaft.get_pps();
 #endif // _TWO_SHAFT_ENCODERS
 
-				int retval2 = _sock->sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_IMU,
-					(char*) &_mData, sizeof(_mData));
+				int retval2 = _sock->sendto(_destSockAddr, (char*) &_mData, sizeof(_mData));
 			} else {
 				// This could produce a lot of messages...
 				//printf("failed to get data from external compass\r\n");

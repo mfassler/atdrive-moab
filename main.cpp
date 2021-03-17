@@ -89,7 +89,11 @@ void u_printf(const char *fmt, ...) {
 	bufLen = vsnprintf(buffer, 1499, fmt, args);
 	va_end(args);
 
-	int retval = tx_sock.sendto(_BROADCAST_IP_ADDRESS, UDP_PORT_DEBUG, buffer, bufLen);
+	SocketAddress sockAddr;
+	sockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
+	sockAddr.set_port(UDP_PORT_DEBUG);
+
+	int retval = tx_sock.sendto(sockAddr, buffer, bufLen);
 
 	if (retval < 0 && NETWORK_IS_UP) {
 		printf("sock.err in u_printf(): %d\r\n", retval);
@@ -290,13 +294,13 @@ void eth_callback(nsapi_event_t status, intptr_t param) {
 		case NSAPI_STATUS_GLOBAL_UP:
 			printf("Global IP address set.  ");
 			NETWORK_IS_UP = true;
-			ip = net.get_ip_address();  // <--dhcp
-			if (ip) {
-				printf("IP address is: %s\r\n", ip);
-			} else {
-				printf("no IP address... we're screwed\r\n");
+			//ip = net.get_ip_address();  // <--dhcp
+			//if (ip) {
+			//	printf("IP address is: %s\r\n", ip);
+			//} else {
+			//	printf("no IP address... we're screwed\r\n");
 				//return -1;
-			}
+			//}
 			break;
 		case NSAPI_STATUS_DISCONNECTED:
 			NETWORK_IS_UP = false;

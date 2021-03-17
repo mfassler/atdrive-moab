@@ -19,7 +19,8 @@ public:
 
 private:
 	UDPSocket *_sock;
-	RawSerial *_serport;
+	SocketAddress _destSockAddr;
+	UnbufferedSerial *_serport;
 
 	EventFlags _event_flags;
 

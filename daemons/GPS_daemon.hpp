@@ -20,7 +20,8 @@ public:
 
 private:
 	UDPSocket *_sock;
-	RawSerial *_gps_in;
+	SocketAddress _destSockAddr;
+	UnbufferedSerial *_gps_in;
 	EventFlags _event_flags;  // I think these are shared globally...
 
 	Thread main_thread;

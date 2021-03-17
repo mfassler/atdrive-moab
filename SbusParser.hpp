@@ -37,7 +37,7 @@ private:
 
 public:
 	SbusParser(struct sbus_udp_payload*);
-	int rx_char(int);
+	int rx_char(char);
 };
 
 #endif // __SBUS_PARSER_HPP

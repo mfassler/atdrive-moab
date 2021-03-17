@@ -18,7 +18,7 @@ private:
 	PinName _tx_pin;
 	PinName _rx_pin;
 
-	RawSerial *_uart;
+	UnbufferedSerial *_uart;
 
 	float _rpm_motor_1;
 	float _rpm_motor_2;

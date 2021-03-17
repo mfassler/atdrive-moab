@@ -50,7 +50,7 @@ int SbusParser::_processSbusMessage() {
 }
 
 
-int SbusParser::rx_char(int c) {
+int SbusParser::rx_char(char c) {
 
 	if (!_rxInBand) {
 		if (c == 0x0f) {
