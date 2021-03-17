@@ -13,40 +13,123 @@
 extern void u_printf(const char *fmt, ...);  // Defined in main()
 
 
+
 XWheels::XWheels(PinName a, PinName b) {
 	_tx_pin = a;
 	_rx_pin = b;
+
+	_rpm_motor_1 = 0;
+	_rpm_motor_2 = 0;
+	_init_count = 0;
+
+	_serport = new BufferedSerial(_tx_pin, _rx_pin, 9600);
 }
 
 
 void XWheels::Start() {
+
 	main_thread.start(callback(this, &XWheels::main_worker));
+	timeout_thread.start(callback(this, &XWheels::timeout_worker));
 }
 
 
 void XWheels::main_worker() {
-	// We want the UART to offline before doing the init sequence,
-	// this seems to be how to reset the motor drive
 
-	ThisThread::sleep_for(1000);
+	u_printf(" *** XWHEELS starting main_worker()\n");
 
-	//u_printf("Trying to start XWheels...\n");
+	char c;
+	char pktLen;
+	char pkt[20];
 
-	_uart = new UnbufferedSerial(_tx_pin, _rx_pin, 9600);
+	_send_init();
+	while (true) {
 
-	//waitUntilFourZero();
-	ThisThread::sleep_for(219);
-	ESCHandShake();
+		_serport->read(&c, 1);
 
-	_rpm_motor_1 = 0;
-	_rpm_motor_2 = 0;
+		if (c == 0) {
 
-	send_motor_command();
+			_serport->read(&c, 1);
+			_serport->read(&c, 1);
+			_serport->read(&c, 1);
+			_serport->read(&c, 1);
+			_event_flags.set(_EVENT_FLAG_XWHEELS_RX);
+			_send_init();
+			u_printf("zeros\n");
 
-	//u_printf("... did it start?\n");
+		} else if (c == 0x81) {
+
+			_serport->read(&pktLen, 1);
+			if (pktLen == 6) {
+				_serport->read(&(pkt[0]), 1);
+				_serport->read(&(pkt[1]), 1);
+				_serport->read(&(pkt[2]), 1);
+				_serport->read(&(pkt[3]), 1);
+				_event_flags.set(_EVENT_FLAG_XWHEELS_RX);
+				_do_something();
+
+				//  If we ever want to parse packets from the ESC, we could do this:
+				//_do_something(0x81, pktLen, pkt);
+
+			} else {
+				u_printf("xwh: wtf?: %x %x\n", c, pktLen);
+			}
+
+		} else if (c == 0x82) {
+
+			_serport->read(&pktLen, 1);
+			if (pktLen == 6) {
+				_serport->read(&(pkt[0]), 1);
+				_serport->read(&(pkt[1]), 1);
+				_serport->read(&(pkt[2]), 1);
+				_serport->read(&(pkt[3]), 1);
+				_event_flags.set(_EVENT_FLAG_XWHEELS_RX);
+				_do_something();
+
+				//  If we ever want to parse packets from the ESC, we could do this:
+				//_do_something(0x82, pktLen, pkt);
+
+			} else {
+				u_printf("xwh: wtf?: %x %x\n", c, pktLen);
+			}
+
+		} else {
+
+			u_printf("xwh: wtf?: %x\n", c);
+
+			// empty out the input buffer:
+			while(_serport->readable()) {
+				_serport->read(&c, 1);
+			}
+
+		}
+	}
+}
+
+
+void XWheels::timeout_worker() {
+	uint32_t flags_read;
 
 	while (true) {
-		send_motor_command();
+		flags_read = _event_flags.wait_any(_EVENT_FLAG_XWHEELS_RX, 1000);
+
+		if (flags_read & osFlagsError) {
+			u_printf(" ** XWheels timeout.  Start init again\n");
+
+			_init_count = 0;
+			_send_init();
+		}
+	}
+}
+
+
+//  If we ever want to parse packets from the ESC, we could do this:
+//void XWheels::_do_something(char pktType, char pkeLen, char* pkt) { }
+
+void XWheels::_do_something(void) {
+	if (_init_count < 20) {
+		_send_init();
+	} else {
+		_send_motor_command();
 	}
 }
 
@@ -71,30 +154,7 @@ void XWheels::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_thrott
 }
 
 
-void XWheels::waitUntilFourZero() {
-	int count_zeros = 0;
-	char c;
-
-	if (_uart->readable() == true) {
-
-		while (true) {
-			_uart->read(&c, 1);
-			if (c == 0) {
-				count_zeros++;
-			} else {
-				count_zeros = 0;
-			}
-
-			if (count_zeros >= 4) {
-				break;
-			}
-		}
-	}
-}
-
-
-
-void XWheels::ESCHandShake() {
+void XWheels::_send_init() {
 
 	unsigned char data_packet[17] = {
 		0x01, // header1
@@ -122,19 +182,9 @@ void XWheels::ESCHandShake() {
 	}
 	data_packet[16] = cksum;
 
-
-	for (int k=1;k<=20;k++) {  // I guess we retry 20 times?
-
-		_uart->write(data_packet, 17);
-
-		if (k==1) {
-			ThisThread::sleep_for(1);
-
-		} else {
-
-			ThisThread::sleep_for(14);
-		}
-	}
+	//u_printf("sending init\n");
+	_serport->write(data_packet, 17);
+	_init_count += 1;
 }
 
 
@@ -171,7 +221,7 @@ unsigned int RPM_to_data(float rpm) {
 }
 
 
-void XWheels::send_motor_command() {
+void XWheels::_send_motor_command() {
 	unsigned char data_packet[9] = {
 		0x02,  // header1
 		0x09,  // header2 -- looks like it might be packet size
@@ -209,10 +259,7 @@ void XWheels::send_motor_command() {
 	}
 	data_packet[8] = cksum;
 
-	_uart->write(data_packet, 7);
-
-	// This delay was discovered from reverse-engineering:
-	ThisThread::sleep_for(23);
+	_serport->write(data_packet, 9);
 }
 
 

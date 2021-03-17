@@ -1,0 +1,28 @@
+
+First character is a packet type:
+
+   Joystick seems to have these packet types:
+     0x01 - init
+     0x02 - motor command
+     0x03 - shutdown
+
+   ESC seems to have these packet types:
+     0x81 - answer init
+     0x82 - answer motor command
+     0x83 - answer shutdown
+
+
+Second character is the total packet length (including header and checksum)
+
+     .... payload ...
+
+Last character is the checksum
+
+
+So:
+
+  pkt[0] ==  Packet_type
+  pkt[1] ==  total_packet_length
+  pkt[2:-1] ==  ... actual data ...
+  pkt[-1] == checksum
+

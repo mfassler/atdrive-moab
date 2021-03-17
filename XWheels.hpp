@@ -2,6 +2,8 @@
 #define __X_WHEELS_HPP
 
 #include "mbed.h"
+#include "EVENT_FLAGS.hpp"
+
 
 
 class XWheels {
@@ -18,17 +20,24 @@ private:
 	PinName _tx_pin;
 	PinName _rx_pin;
 
-	UnbufferedSerial *_uart;
+	BufferedSerial *_serport;
 
 	float _rpm_motor_1;
 	float _rpm_motor_2;
+	int _init_count;
+
+	EventFlags _event_flags;
 
 	Thread main_thread;
+	Thread timeout_thread;
 
 	void main_worker();
-	void waitUntilFourZero();
-	void ESCHandShake();
-	void send_motor_command();
+	void timeout_worker();
+
+	void _do_something(void);
+	void _send_init();
+	void _send_motor_command();
+
 };
 
 
