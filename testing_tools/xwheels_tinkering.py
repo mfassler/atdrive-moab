@@ -127,6 +127,7 @@ class XWheelsController:
             self.send_init()
         else:
             self.send_motor_command()
+        #print("0x%02x:" % (protocol), pkt.hex(' '))
 
 
     def send_motor_command(self):

@@ -26,3 +26,28 @@ So:
   pkt[2:-1] ==  ... actual data ...
   pkt[-1] == checksum
 
+
+
+---------------------------
+On a working, running ESC, when I'm sending 0x02 packets, the 0x82 answer packets
+have a payload of 3 bytes.  Typically:
+
+  0x00 0x00 0x04
+
+Rasheed says the 3rd byte ("0x04" in this case) is the battery status.
+
+If I unplug the right-side motor, both motors brake, and the return status becomes:
+
+  0x03 0x00 0x04
+
+If I do the same with the left-side motor, then the return status is:
+
+  0x30 0x00 0x04
+
+If I try to run a system with no motors attached, the 0x81 return status is:
+  0x11 0x00 0x04
+
+and the 0x82 return status is:
+  0x33 0x00 0x04
+
+
