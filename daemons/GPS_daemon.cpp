@@ -5,24 +5,8 @@ extern void u_printf(const char *fmt, ...);  // Defined in main()
 
 
 
-// Incoming buffer, from serial port:
-char _gpsRxBuf[1500];
-int _gpsRxBufLen = 0;
-
-// Outgoing buffers (circular buffer), via network UDP:
-#define _GPS_RING_BUFFER_SIZE 8
-char _gpsTxBuf[_GPS_RING_BUFFER_SIZE][1500];
-int _gpsTxBufLen[_GPS_RING_BUFFER_SIZE] = {0, 0, 0, 0};
-int _gpsTxBufIdxFI = 0;
-int _gpsTxBufIdxFO = 0;
-
-
-
-
-
-
 GPS_daemon::GPS_daemon(PinName tx, PinName rx, EthernetInterface *net) {
-	_gps_in = new UnbufferedSerial(tx, rx, 115200);  //tx, then rx
+	_serport = new BufferedSerial(tx, rx, 115200);  //tx, then rx
 
 	_sock = new UDPSocket();
 	_sock->open(net);
@@ -31,44 +15,35 @@ GPS_daemon::GPS_daemon(PinName tx, PinName rx, EthernetInterface *net) {
 	_destSockAddr.set_ip_address(_BROADCAST_IP_ADDRESS);
 	_destSockAddr.set_port(UDP_PORT_GPS_NMEA);
 
-	_gps_in->attach(callback(this, &GPS_daemon::_Gps_Rx_Interrupt));
-
 }
 
 
 void GPS_daemon::Start() {
-	main_thread.start(callback(this, &GPS_daemon::main_worker));
+	serial_rx_thread.start(callback(this, &GPS_daemon::serial_rx_worker));
 	udp_rx_thread.start(callback(this, &GPS_daemon::udp_rx_worker));
 }
 
 
-
-
-void GPS_daemon::main_worker() {
-
-	uint32_t flags_read;
+void GPS_daemon::serial_rx_worker() {
+	#define _NMEA_MAX_LEN 128
+	char buffer[_NMEA_MAX_LEN];
+	int i = 0;
 
 	while (true) {
-		flags_read = _event_flags.wait_any(_EVENT_FLAG_GPS, 1200);
+		_serport->read(&(buffer[i]), 1);
 
-		if (flags_read & osFlagsError) {
+		// All NMEA sentences start with either '$' or '!'.
+		// All NMEA sentences end with a linefeed, 0x0a.
+		// Max sentence length is 82 characters.  
 
-			u_printf("GPS timeout!\n");
+		// But we're just going to look for 0x0a or a full buffer:
+		i++;
 
-		} else {
+		if ( (buffer[i-1] == 0x0a) || (i >= _NMEA_MAX_LEN)) {
 
-			while (_gpsTxBufIdxFO != _gpsTxBufIdxFI) {
-				int retval = _sock->sendto(_destSockAddr, _gpsTxBuf[_gpsTxBufIdxFO], _gpsTxBufLen[_gpsTxBufIdxFO]);
+			_sock->sendto(_destSockAddr, buffer, i);
+			i = 0;
 
-				_gpsTxBufIdxFO++;
-				if (_gpsTxBufIdxFO >= _GPS_RING_BUFFER_SIZE) {
-					_gpsTxBufIdxFO = 0;
-				}
-
-				//if (retval < 0 && NETWORK_IS_UP) {
-				//	printf("UDP socket error in gps_reTx_worker\r\n");
-				//}
-			}
 		}
 	}
 }
@@ -87,34 +62,7 @@ void GPS_daemon::udp_rx_worker() {
 
 	while (true) {
 		int n = _sock->recvfrom(&sockAddr, inputBuffer, 1500);
-		_gps_in->write(inputBuffer, n);
+		_serport->write(inputBuffer, n);
 	}
 }
-
-
-
-void GPS_daemon::_Gps_Rx_Interrupt() {
-	char c;
-	while (_gps_in->readable()) {
-
-		_gps_in->read(&c, 1);
-		_gpsRxBuf[_gpsRxBufLen] = c;
-		_gpsRxBufLen++;
-
-		if ((c == 0x0a) || (_gpsRxBufLen > 1400)) {
-
-			memcpy(_gpsTxBuf[_gpsTxBufIdxFI], _gpsRxBuf, _gpsRxBufLen);
-			_gpsTxBufLen[_gpsTxBufIdxFI] = _gpsRxBufLen;
-
-			_gpsTxBufIdxFI++;
-			if (_gpsTxBufIdxFI >= _GPS_RING_BUFFER_SIZE) {
-				_gpsTxBufIdxFI = 0;
-			}
-
-			_event_flags.set(_EVENT_FLAG_GPS);
-			_gpsRxBufLen = 0;
-		}
-	}
-}
-
 
