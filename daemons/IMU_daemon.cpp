@@ -67,7 +67,7 @@ void IMU_daemon::set_extra_info(
 
 
 void IMU_daemon::main_worker() {
-	ThisThread::sleep_for(1000);
+	ThisThread::sleep_for(1000ms);
 
 	// Look for the compass:
 	if (compass.init() < 0) {
@@ -88,7 +88,7 @@ void IMU_daemon::main_worker() {
 
 	int count = 0;
 	while (true) {
-		ThisThread::sleep_for(10); // 100Hz
+		ThisThread::sleep_for(10ms); // 100Hz
 
 		// Check the external compass at 20 Hz:
 		if (count % 5 == 0) {

@@ -283,7 +283,7 @@ void radio_callback() {
 
 
 void eth_callback(nsapi_event_t status, intptr_t param) {
-	const char *ip;
+	//const char *ip;
 
 	printf("Connection status changed!\r\n");
 	switch(param) {
@@ -380,13 +380,13 @@ int main() {
 		for (int i=0; i < 11; ++i) {
 				float brightness = i/10.0;
 				hb_led.write(brightness);
-				ThisThread::sleep_for(20);
+				ThisThread::sleep_for(20ms);
 		}
 		// Heartbeat LED dims darker:
 		for (int i=0; i < 11; ++i) {
 				float brightness = 1.0 - i/10.0;
 				hb_led.write(brightness);
-				ThisThread::sleep_for(20);
+				ThisThread::sleep_for(20ms);
 		}
 
 		u_printf("heartbeat: %d\n", ct);

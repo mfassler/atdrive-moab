@@ -109,29 +109,29 @@ ssize_t BMP280::init() {
 	// data from these registers.  TODO:  is this normal?
 
 	read_reg_u16(0x88, &_dig_T1);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x8a, &_dig_T2);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x8c, &_dig_T3);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_u16(0x8e, &_dig_P1);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x90, &_dig_P2);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x92, &_dig_P3);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x94, &_dig_P4);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x96, &_dig_P5);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x98, &_dig_P6);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x9a, &_dig_P7);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x9c, &_dig_P8);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 	read_reg_s16(0x9e, &_dig_P9);
-	ThisThread::sleep_for(2);
+	ThisThread::sleep_for(2ms);
 
 
 	// Start-up the device
