@@ -74,35 +74,25 @@ public:
 private:
 	UDPSocket *_sock;
 	SocketAddress _destSockAddr;
-	UnbufferedSerial *_serport;
+	BufferedSerial *_serport;
 
 	EventFlags _event_flags;
 
-	Thread main_thread;
 
 	Callback<void()> _callback;
 
+	Thread main_thread;
+	Thread timeout_thread;
+
 	void main_worker(void);
-	void _Serial_Rx_Interrupt(void);
+	void timeout_worker(void);
 
 	char output_buffer[8];
 	void _parse_vals(void);
 
-	// Ring buffer for serial-to-UDP operations:
-	#define _RING_BUFFER_SIZE169 256
-
-	char _ringBuf[_RING_BUFFER_SIZE169];
-	int _inputIDX = 0;
-	int _outputIDX = 0;
-
-	// Stop release must be held down for 2 seconds
+	// Stop release must be held down for 0.1 seconds
 	enum button_state_t _stop_release_state = no_press;
-	uint64_t _stop_release_time = rtos::Kernel::get_ms_count();
-
-	// This is to de-bounce buttons:
-	//enum button_state_t _blue_button_state = no_press;
-	//enum button_state_t _red_button_state = no_press;
-
+	Kernel::Clock::time_point _stop_release_time = Kernel::Clock::now();
 
 };
 
