@@ -94,6 +94,10 @@ private:
 	enum button_state_t _stop_release_state = no_press;
 	Kernel::Clock::time_point _stop_release_time = Kernel::Clock::now();
 
+	// If max throttle for more than 2 seconds, then give extra boost
+	enum button_state_t _max_throttle_state = no_press;
+	Kernel::Clock::time_point _max_throttle_time = Kernel::Clock::now();
+
 };
 
 #endif // __RADIO169_MODULE_HPP

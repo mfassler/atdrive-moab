@@ -73,11 +73,55 @@ void Radio169_daemon::_parse_vals() {
 	timeout = false;
 
 	// Fake SBus values, since Moab was originally built around S.Bus:
-	sb_steering = 1024 + (int) controller_values.rightjoy_lr * 10 * _SCALE_STEERING;
 
-	if (controller_values.leftjoy_ud > 0) {
-		sb_throttle = 1024 + (int) controller_values.leftjoy_ud * 10 * _SCALE_THROTTLE;
+	// The r169 seems to have a deadzone from 0 to 11 (+) and 0 to -11 (-)
+
+	if (controller_values.rightjoy_lr > 10) {
+		sb_steering = 1024 + (int) (controller_values.rightjoy_lr - 10) * 10 * _SCALE_STEERING;
+	} else if (controller_values.rightjoy_lr < -10) {
+		sb_steering = 1024 + (int) (controller_values.rightjoy_lr + 10) * 10 * _SCALE_STEERING;
 	} else {
+		sb_steering = 1024;
+	}
+
+
+	// Dead-zone and throttle stuff...
+	//  from 0 to 10, ignore (set to 0)
+	// from 11 to 31 go from 0.0 to 0.2
+	// from 32 to 63 go from 0.2 to 0.4
+	//
+	// if holding max throttle for 2 seconds, go to 0.5
+
+	float K1 = 0.2 / 21.0;  // 21 steps to increase by 0.2
+	float K2 = 0.2 / 31.0;  // 31 steps to increase by 0.2
+
+	float tPercent;
+
+	if (controller_values.leftjoy_ud == 63) {
+		if (_max_throttle_state == no_press) {
+			_max_throttle_state = press;
+			_max_throttle_time = Kernel::Clock::now();
+		}
+		if (Kernel::Clock::now() - _max_throttle_time > 3s) {
+			tPercent = 0.5;
+		} else {
+			tPercent = 0.4;
+		}
+		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
+
+	} else if (controller_values.leftjoy_ud > 31) {
+		_max_throttle_state = no_press;
+		tPercent = 0.2 + K2 * (controller_values.leftjoy_ud - 31);
+		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
+	} else if (controller_values.leftjoy_ud > 10) {
+		_max_throttle_state = no_press;
+		tPercent = K1 * (controller_values.leftjoy_ud - 10);
+		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
+	} else if (controller_values.leftjoy_ud > 0) {
+		_max_throttle_state = no_press;
+		sb_throttle = 1024;
+	} else {
+		_max_throttle_state = no_press;
 		sb_throttle = 1024 + (int) controller_values.leftjoy_ud * 10 * _SCALE_BRAKE;
 	}
 
@@ -207,7 +251,7 @@ void Radio169_daemon::main_worker() {
 			// coding using a USB-FTDi receiver.  What's up with that...
 			//   ... wondering if the Moab is a bit more sensitive to radio noise than
 			//       the FTDi chip...
-			u_printf("r169: bad magic byte #0: %02x\n", c);
+			//u_printf("r169: bad magic byte #0: %02x\n", c);
 		}
 	}
 }
