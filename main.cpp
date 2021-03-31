@@ -243,7 +243,7 @@ void radio_callback() {
 		myledB = 1;
 
 		sb_steering = 1024;
-		sb_throttle = 1024;
+		sb_throttle = 352;
 		break;
 	}
 
