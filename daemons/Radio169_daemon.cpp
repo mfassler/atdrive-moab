@@ -76,10 +76,39 @@ void Radio169_daemon::_parse_vals() {
 
 	// The r169 seems to have a deadzone from 0 to 11 (+) and 0 to -11 (-)
 
-	if (controller_values.rightjoy_lr > 10) {
-		sb_steering = 1024 + (int) (controller_values.rightjoy_lr - 10) * 10 * _SCALE_STEERING;
+	// Dead-zone and steering eqs:
+	//  from 0 to 10, ignore (set to 0)
+	//  from 10 to 39, go from 0.0 to 0.25
+	//  from 40 to 63, go from 0.25 to 1.0
+
+	float sPercent;
+/*
+	float SK1 = 0.25 / 29.0;  // 29 steps to increase by 0.25
+	float SK2 = 0.75 / 23.0;  // 23 steps to increase by 0.75
+
+	if (controller_values.rightjoy_lr > 39) {
+		sPercent = 0.25 + SK2 * (controller_values.rightjoy_lr - 39);
+		sb_steering = 1024 + (int) (672 * sPercent) * _SCALE_STEERING;
+	} else if (controller_values.rightjoy_lr > 10) {
+		sPercent = SK1 * (controller_values.rightjoy_lr - 10);
+		sb_steering = 1024 + (int) (672 * sPercent) * _SCALE_STEERING;
+	} else if (controller_values.rightjoy_lr < -39) {
+		sPercent = 0.25 + SK2 * (-controller_values.rightjoy_lr - 39);
+		sb_steering = 1024 - (int) (672 * sPercent) * _SCALE_STEERING;
 	} else if (controller_values.rightjoy_lr < -10) {
-		sb_steering = 1024 + (int) (controller_values.rightjoy_lr + 10) * 10 * _SCALE_STEERING;
+		sPercent = SK1 * (-controller_values.rightjoy_lr - 10);
+		sb_steering = 1024 - (int) (672 * sPercent) * _SCALE_STEERING;
+	} else {
+		sb_steering = 1024;
+	}
+*/
+
+	if (controller_values.rightjoy_lr > 10) {
+		sPercent = (expf((controller_values.rightjoy_lr-10.0f) / 20.0f) - 1.0f) / (expf(53.0f/20.0f) - 1.0f);
+		sb_steering = 1024 + (int) (672 * sPercent) * _SCALE_STEERING;
+	} else if (controller_values.rightjoy_lr < -10) {
+		sPercent = (expf((-controller_values.rightjoy_lr-10.0f) / 20.0f) - 1.0f) / (expf(53.0f/20.0f) - 1.0f);
+		sb_steering = 1024 - (int) (672 * sPercent) * _SCALE_STEERING;
 	} else {
 		sb_steering = 1024;
 	}
@@ -92,8 +121,8 @@ void Radio169_daemon::_parse_vals() {
 	//
 	// if holding max throttle for 2 seconds, go to 0.5
 
-	float K1 = 0.2 / 21.0;  // 21 steps to increase by 0.2
-	float K2 = 0.2 / 31.0;  // 31 steps to increase by 0.2
+	float K1 = 0.2 / 29.0;  // 21 steps to increase by 0.2
+	float K2 = 0.2 / 23.0;  // 31 steps to increase by 0.2
 
 	float tPercent;
 
@@ -109,9 +138,9 @@ void Radio169_daemon::_parse_vals() {
 		}
 		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
 
-	} else if (controller_values.leftjoy_ud > 31) {
+	} else if (controller_values.leftjoy_ud > 39) {
 		_max_throttle_state = no_press;
-		tPercent = 0.2 + K2 * (controller_values.leftjoy_ud - 31);
+		tPercent = 0.2 + K2 * (controller_values.leftjoy_ud - 39);
 		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
 	} else if (controller_values.leftjoy_ud > 10) {
 		_max_throttle_state = no_press;
