@@ -121,8 +121,8 @@ void Radio169_daemon::_parse_vals() {
 	//
 	// if holding max throttle for 2 seconds, go to 0.5
 
-	float K1 = 0.2 / 29.0;  // 21 steps to increase by 0.2
-	float K2 = 0.2 / 23.0;  // 31 steps to increase by 0.2
+	//float K1 = 0.2 / 29.0;  // 21 steps to increase by 0.2
+	//float K2 = 0.2 / 23.0;  // 31 steps to increase by 0.2
 
 	float tPercent;
 
@@ -138,14 +138,10 @@ void Radio169_daemon::_parse_vals() {
 		}
 		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
 
-	} else if (controller_values.leftjoy_ud > 39) {
-		_max_throttle_state = no_press;
-		tPercent = 0.2 + K2 * (controller_values.leftjoy_ud - 39);
-		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
 	} else if (controller_values.leftjoy_ud > 10) {
 		_max_throttle_state = no_press;
-		tPercent = K1 * (controller_values.leftjoy_ud - 10);
-		sb_throttle = 1024 + (int) (672 * tPercent) * _SCALE_THROTTLE;
+		sPercent = 0.4f * (expf((controller_values.leftjoy_ud-10.0f) / 20.0f) - 1.0f) / (expf(52.0f/20.0f) - 1.0f);
+		sb_throttle = 1024 + (int) (672 * sPercent) * _SCALE_THROTTLE;
 	} else if (controller_values.leftjoy_ud > 0) {
 		_max_throttle_state = no_press;
 		sb_throttle = 1024;
