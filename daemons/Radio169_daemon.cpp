@@ -162,10 +162,10 @@ void Radio169_daemon::_stateful_stuff(void) {
 		requested_moab_state = Auto;
 		u_printf("User auto A\n");
 
-	} else if (controller_values.X) {  // Auto PGM 2
+	} else if (controller_values.start) {  // Follow mode
 
 		requested_moab_state = Auto;
-		u_printf("User auto X\n");
+		u_printf("User auto start\n");
 
 	} else if (controller_values.Y) {  // Auto PGM 3
 
