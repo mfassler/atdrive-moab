@@ -12,11 +12,12 @@ extern void u_printf(const char *fmt, ...); // defined in main
 
 
 
-Radio169_daemon::Radio169_daemon(PinName tx, PinName rx, UDPSocket *tx_sock) {
+Radio169_daemon::Radio169_daemon(PinName tx, PinName rx, UDPSocket *tx_sock, MotorControl *motorControl) {
 	// TODO?  tx is not needed...
 	_serport = new BufferedSerial(tx, rx, 57600);
 
 	_sock = tx_sock;
+	_motorControl = motorControl;
 
 	_stop_release_time = Kernel::Clock::now();
 
@@ -71,6 +72,19 @@ void Radio169_daemon::_parse_vals() {
 	controller_values.rightjoy_ud = output_buffer[6] - 64;
 
 	timeout = false;
+
+
+	if (controller_values.dpad_up) {
+		_motorControl->reset_steering_trim();
+	}
+
+	if (controller_values.dpad_left) {
+		_motorControl->adjust_steering_trim(-_TRIM_ADJ);
+	}
+
+	if (controller_values.dpad_right) {
+		_motorControl->adjust_steering_trim(_TRIM_ADJ);
+	}
 
 	// Fake SBus values, since Moab was originally built around S.Bus:
 

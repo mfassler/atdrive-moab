@@ -61,9 +61,6 @@ bool AUTOPILOT_OK = false;
 //  (minimal inter-dependence; mostly independent of anything else)
 SBus_daemon sbus_daemon(PD_2, &tx_sock);
 
-#ifdef _USE_RADIO169
-Radio169_daemon r169_daemon(NC, PD_6, &tx_sock);
-#endif // _USE_RADIO169
 
 IMU_daemon imu_daemon(&tx_sock);
 GPS_daemon gps_daemon(PE_8, PE_7, &net);
@@ -79,6 +76,9 @@ XWheels drive(PD_1, PD_0);
 MotorControl motorControl(PD_14, PD_15);
 #endif // USE_XWHEELS
 
+#ifdef _USE_RADIO169
+Radio169_daemon r169_daemon(NC, PD_6, &tx_sock, &motorControl);
+#endif // _USE_RADIO169
 
 void u_printf(const char *fmt, ...) {
 	va_list args;

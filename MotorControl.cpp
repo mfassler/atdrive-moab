@@ -16,9 +16,21 @@ MotorControl::MotorControl(PinName a, PinName b) {
 
 	_pw_a = 0.0;
 	_pw_b = 0.0;
+
+	_current_steering_pw_center = _STEERING_PW_CENTER;
 }
 
 
+void MotorControl::reset_steering_trim(void) {
+	_current_steering_pw_center = _STEERING_PW_CENTER;
+	set_steering_and_throttle(_prev_steer_value, _prev_throt_value, true);
+}
+
+
+void MotorControl::adjust_steering_trim(float adj) {
+	_current_steering_pw_center += adj;
+	set_steering_and_throttle(_prev_steer_value, _prev_throt_value, true);
+}
 
 #define SBUS_CENTER 1024
 // center + 672
@@ -55,7 +67,7 @@ const float THROTTLE_PW_MIN = _THROTTLE_PW_MIN;
 const float _STEERING_PW_MAX = _STEERING_PW_CENTER + _STEERING_PW_RANGE;
 const float _STEERING_PW_MIN = _STEERING_PW_CENTER - _STEERING_PW_RANGE;
 
-void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_throttle) {
+void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_throttle, bool Force /*=false*/) {
 
 	if (sb_steering > SBUS_MAX) {
 		sb_steering = SBUS_MAX;
@@ -69,8 +81,10 @@ void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_t
 		sb_throttle = SBUS_MIN;
 	}
 
-	if ((_prev_steer_value == sb_steering) && (_prev_throt_value == sb_throttle)) {
-		return;
+	if (!Force) {
+		if ((_prev_steer_value == sb_steering) && (_prev_throt_value == sb_throttle)) {
+			return;
+		}
 	}
 
 	_prev_steer_value = sb_steering;
@@ -101,7 +115,7 @@ void MotorControl::set_steering_and_throttle(uint16_t sb_steering, uint16_t sb_t
 
 #else // USE_SKIDMODE
 
-	_pw_a = steer_percentValue * _STEERING_PW_RANGE + _STEERING_PW_CENTER;
+	_pw_a = steer_percentValue * _STEERING_PW_RANGE + _current_steering_pw_center;
 	_pw_b = throt_percentValue * _THROTTLE_PW_RANGE + _THROTTLE_PW_CENTER;
 
 #endif // USE_SKIDMODE

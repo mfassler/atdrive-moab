@@ -8,7 +8,7 @@
 #include "EVENT_FLAGS.hpp"
 #include "MOAB_DEFINITIONS.h"
 
-
+#include "MotorControl.hpp"
 
 struct controller_values_t {
 	// Special buttons:
@@ -56,7 +56,7 @@ enum button_state_t {
 class Radio169_daemon {
 
 public:
-	Radio169_daemon(PinName, PinName, UDPSocket*);
+	Radio169_daemon(PinName, PinName, UDPSocket*, MotorControl*);
 
 	void Start();
 
@@ -78,6 +78,7 @@ private:
 
 	EventFlags _event_flags;
 
+	MotorControl *_motorControl;
 
 	Callback<void()> _callback;
 
