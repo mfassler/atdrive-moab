@@ -1,5 +1,5 @@
-#ifndef __BMP180_HPP_
-#define __BMP180_HPP_
+#ifndef __BMP280_HPP_
+#define __BMP280_HPP_
 
 #include "mbed.h"
 
@@ -51,4 +51,4 @@ private:
 
 };
 
-#endif // __BMP180_HPP_
+#endif // __BMP280_HPP_
