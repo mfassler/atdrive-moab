@@ -53,6 +53,18 @@ private:
 	PwmOut *user_servo_0;
 #endif // USER_SERVO_OUT_0
 
+#ifdef USER_SERVO_OUT_1
+	PwmOut *user_servo_1;
+#endif // USER_SERVO_OUT_1
+
+#ifdef USER_SERVO_OUT_2
+	PwmOut *user_servo_2;
+#endif // USER_SERVO_OUT_2
+
+#ifdef USER_SERVO_OUT_3
+	PwmOut *user_servo_3;
+#endif // USER_SERVO_OUT_3
+
 };
 
 

@@ -52,6 +52,23 @@ RxCommandParser::RxCommandParser(EthernetInterface *net) {
 	user_servo_0->pulsewidth_us(0);
 #endif // USER_SERVO_OUT_0
 
+#ifdef USER_SERVO_OUT_1  // assume a Futaba-style pulse-width in micro-seconds
+	user_servo_1 = new PwmOut(USER_SERVO_OUT_1);
+	user_servo_1->period_ms(15);  // same period as Futaba S.Bus
+	user_servo_1->pulsewidth_us(0);
+#endif // USER_SERVO_OUT_1
+
+#ifdef USER_SERVO_OUT_2  // assume a Futaba-style pulse-width in micro-seconds
+	user_servo_2 = new PwmOut(USER_SERVO_OUT_2);
+	user_servo_2->period_ms(15);  // same period as Futaba S.Bus
+	user_servo_2->pulsewidth_us(0);
+#endif // USER_SERVO_OUT_2
+
+#ifdef USER_SERVO_OUT_3  // assume a Futaba-style pulse-width in micro-seconds
+	user_servo_3 = new PwmOut(USER_SERVO_OUT_3);
+	user_servo_3->period_ms(15);  // same period as Futaba S.Bus
+	user_servo_3->pulsewidth_us(0);
+#endif // USER_SERVO_OUT_3
 }
 
 
@@ -135,10 +152,11 @@ void RxCommandParser::main_worker() {
 					}
 				} else if (n >= 11 && strncmp(&(inputBuffer[4]), "servo", 3) == 0) {
 					u_printf(inputBuffer);
+					int val = 0;
 					switch (inputBuffer[9]) {
 					case '0':
 #ifdef USER_SERVO_OUT_0
-						int val = atoi(&(inputBuffer[10]));
+						val = atoi(&(inputBuffer[10]));
 						// Futaba servo PWs are usually about 300 to 1700 us, but we 
 						// will allow anything that is physically possible
 						if (val < 0) {
@@ -149,6 +167,51 @@ void RxCommandParser::main_worker() {
 						user_servo_0->pulsewidth_us(val);
 						u_printf("--- set servo0: %d\n", val);
 #endif // USER_SERVO_OUT_0
+
+						break;
+					case '1':
+#ifdef USER_SERVO_OUT_1
+						val = atoi(&(inputBuffer[10]));
+						// Futaba servo PWs are usually about 300 to 1700 us, but we 
+						// will allow anything that is physically possible
+						if (val < 0) {
+							val = 0;
+						} else if (val > 15000) {
+							val = 15000;
+						}
+						user_servo_1->pulsewidth_us(val);
+						u_printf("--- set servo1: %d\n", val);
+#endif // USER_SERVO_OUT_1
+
+						break;
+					case '2':
+#ifdef USER_SERVO_OUT_2
+						val = atoi(&(inputBuffer[10]));
+						// Futaba servo PWs are usually about 300 to 1700 us, but we 
+						// will allow anything that is physically possible
+						if (val < 0) {
+							val = 0;
+						} else if (val > 15000) {
+							val = 15000;
+						}
+						user_servo_2->pulsewidth_us(val);
+						u_printf("--- set servo2: %d\n", val);
+#endif // USER_SERVO_OUT_2
+
+						break;
+					case '3':
+#ifdef USER_SERVO_OUT_3
+						val = atoi(&(inputBuffer[10]));
+						// Futaba servo PWs are usually about 300 to 1700 us, but we 
+						// will allow anything that is physically possible
+						if (val < 0) {
+							val = 0;
+						} else if (val > 15000) {
+							val = 15000;
+						}
+						user_servo_3->pulsewidth_us(val);
+						u_printf("--- set servo3: %d\n", val);
+#endif // USER_SERVO_OUT_3
 
 						break;
 					}
